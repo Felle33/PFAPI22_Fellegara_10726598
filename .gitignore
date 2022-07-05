@@ -1,4 +1,6 @@
 cmake-build-debug
-CMakeLists.txt
+*.txt
 .idea
-output
+outputValgrind
+api
+test_cases
