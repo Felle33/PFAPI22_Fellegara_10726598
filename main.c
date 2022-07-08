@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <string.h>
 
-const int HASHMAPSIZE = 13;
+const int HASHMAPSIZE = 7;
 
-typedef enum{ESATTI, MAGGIOREUGUALE, NESSUNO} attributoLettere;
+typedef enum{NESSUNO, MAGGIOREUGUALE, ESATTI} attributoLettere;
 
 typedef struct nodeLetter{
     int pos;
@@ -41,6 +41,11 @@ typedef struct nodeFilter{
     nodePos* pS;
 }nodeFilter;
 
+typedef struct nodeCamb{
+    nodeFilter *nodeF;
+    struct nodeCamb *pn;
+}nodeCamb;
+
 void setLengthBuff(int *lengthBuff, int k){
     if(k > 17)
         *lengthBuff = k + 1;
@@ -53,7 +58,7 @@ void initializeHashMap(nodeHash*** hashMap){
         (*hashMap)[i] = NULL;
 }
 
-// Cerca se esiste un carattere nell'hashMap e ritorna il suo puntatore se esiste
+// Cerca se esiste un carattere nell'hashMap e se esiste ritorna il suo puntatore
 nodeHash* searchHashMapCar(nodeHash*** hashMap, char car){
     int cella = car % HASHMAPSIZE;
     nodeHash* headList = (*hashMap)[cella];
@@ -68,30 +73,18 @@ nodeHash* searchHashMapCar(nodeHash*** hashMap, char car){
 }
 
 // Inserisce una lettera nell'hashMap
-void insertHashMap(nodeHash*** hashMap, char car, int pos){
+void insertHashMap(nodeHash*** hashMap, char car){
     nodeHash* headList = searchHashMapCar(hashMap, car);
 
-    if(headList != NULL){
-        nodeLetter* l = (nodeLetter*) malloc(sizeof(nodeLetter));
-
+    if(headList != NULL)
         headList->num++;
-        l->connected = false;
-        l->pos = pos;
-        l->pn = headList->pl;
-        headList->pl = l;
-    }
     else{
         nodeHash* ins = (nodeHash*) malloc(sizeof(nodeHash));
-        nodeLetter* l = (nodeLetter*) malloc(sizeof(nodeLetter));
 
         ins->c = car;
         ins->pn = NULL;
         ins->num = 1;
-        ins->pl = l;
-
-        l->pos = pos;
-        l->pn = NULL;
-        l->connected = false;
+        ins->pl = NULL;
 
         int cella = car % HASHMAPSIZE;
         ins->pn = (*hashMap)[cella];
@@ -103,12 +96,21 @@ void createHashMap(nodeString* s){
     s->ph = (nodeHash**) malloc(sizeof(nodeHash*) * HASHMAPSIZE);
     initializeHashMap(&s->ph);
     char* c = s->s;
-    int pos = 0;
 
     while(*c != '\0'){
-        insertHashMap(&(s->ph), *c, pos);
-        pos++;
+        insertHashMap(&(s->ph), *c);
         c++;
+    }
+}
+
+void createHashMapPos(nodeString* pS){
+    for(int i = 0; pS->s[i] != '\0'; i++){
+        nodeHash* pH = searchHashMapCar(&pS->ph, pS->s[i]);
+        nodeLetter* pL = (nodeLetter*) malloc(sizeof(nodeLetter));
+        pL->connected = false;
+        pL->pos = i;
+        pL->pn = pH->pl;
+        pH->pl = pL;
     }
 }
 
@@ -140,6 +142,7 @@ void insertLista(nodeString** list, char* buffer, int k){
     ins->s = (char*) malloc(sizeof(char) * k);
     strncpy(ins->s, buffer, k);
     ins->ph = NULL;
+    createHashMap(ins);
 
     if(prev != NULL)
         prev->pn = ins;
@@ -170,13 +173,25 @@ void creazioneParole(nodeString** list, int lengthBuff, int k, char* endString){
 }
 
 void freeListaString(nodeString** list){
-    nodeString *curr = *list, *suc = NULL;
+    nodeString *curS = *list, *sucS = NULL;
 
-    while(curr != NULL){
-        suc = curr->pn;
-        free(curr->s);
-        free(curr);
-        curr = suc;
+    while(curS != NULL){
+        sucS = curS->pn;
+        free(curS->s);
+
+        for(int i = 0; i < HASHMAPSIZE; i++){
+            nodeHash *curH = curS->ph[i], *sucH = NULL;
+
+            while(curH != NULL){
+                sucH = curH->pn;
+                free(curH);
+                curH = sucH;
+            }
+        }
+
+        free(curS->ph);
+        free(curS);
+        curS = sucS;
     }
 
     *list = NULL;
@@ -209,27 +224,21 @@ void freeListaFiltro(nodeFilter **listFiltro) {
     *listFiltro = NULL;
 }
 
-void freeHashMap(nodeHash*** hashMap){
+void freeHashMapPos(nodeHash*** hashMap){
     for(int i = 0; i < HASHMAPSIZE; i++){
-        nodeHash *curH = (*hashMap)[i], *sucH = NULL;
+        nodeHash *curH = (*hashMap)[i];
 
         while(curH != NULL){
-            sucH = curH->pn;
-
             nodeLetter *curL = curH->pl, *sucL = NULL;
             while(curL != NULL){
                 sucL = curL->pn;
                 free(curL);
                 curL = sucL;
             }
-
-            free(curH);
-            curH = sucH;
+            curH->pl = NULL;
+            curH = curH->pn;
         }
     }
-
-    free(*hashMap);
-    *hashMap = NULL;
 }
 
 void stampaFiltrate(nodeString *list) {
@@ -343,23 +352,26 @@ void letteraConnessioniFinite(nodeFilter **list, char c, int pos) {
 
 }
 
-void filtraStringheRecente(nodeString **listString, nodeFilter *listFilter) {
+void filtraStringhe(nodeString **listString, nodeFilter *listFilter) {
     while(listFilter != NULL){
         for(nodeString *head = *listString; head != NULL; head = head->pn){
+            if(head->valid == false)
+                continue;
 
-            if(listFilter->attr == NESSUNO && searchHashMapCar(&head->ph, listFilter->c) != NULL){
-                head->valid = false;
+            if(listFilter->attr == NESSUNO){
+                if(searchHashMapCar(&head->ph, listFilter->c) != NULL)
+                    head->valid = false;
                 continue;
             }
             else{
                 if(listFilter->attr == MAGGIOREUGUALE){
-                    if(searchHashMapCar(&head->ph, listFilter->c)->num < listFilter->num) {
+                    if(searchHashMapCar(&head->ph, listFilter->c) == NULL || searchHashMapCar(&head->ph, listFilter->c)->num < listFilter->num) {
                         head->valid = false;
                         continue;
                     }
                 }
                 else{
-                    if(searchHashMapCar(&head->ph, listFilter->c)->num != listFilter->num){
+                    if(searchHashMapCar(&head->ph, listFilter->c) == NULL || searchHashMapCar(&head->ph, listFilter->c)->num != listFilter->num){
                         head->valid = false;
                         continue;
                     }
@@ -398,17 +410,174 @@ int numeroStringheValide(nodeString *listString) {
     return cont;
 }
 
+nodeFilter* searchListFiltroSto(nodeFilter *listFiltroSto, char c){
+    while(listFiltroSto != NULL){
+        if(listFiltroSto->c == c)
+            return listFiltroSto;
+        listFiltroSto = listFiltroSto->pn;
+    }
+    return NULL;
+}
+
+nodePos *searchNodePos(nodePos *list, int pos) {
+    while(list != NULL){
+        if(list->pos == pos)
+            return list;
+        list = list->pn;
+    }
+    return NULL;
+}
+
+void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFiltroSto, nodeCamb **listCambiamenti) {
+    while(listFiltroRec != NULL){
+        nodeFilter *pFS = searchListFiltroSto(*listFiltroSto, listFiltroRec->c);
+
+        // SE IL NODO NON ESISTE
+        if(pFS == NULL){
+            pFS = malloc(sizeof(nodeFilter));
+
+            pFS->c = listFiltroRec->c;
+            pFS->num = listFiltroRec->num;
+            pFS->attr = listFiltroRec->attr;
+            pFS->pG = NULL;
+            pFS->pS = NULL;
+
+            nodePos *nPR = listFiltroRec->pG; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE GIUSTA
+
+            while(nPR != NULL){
+                nodePos *nPS = malloc(sizeof(nodePos));
+
+                nPS->pos = nPR->pos;
+                nPS->pn = pFS->pG;
+                pFS->pG = nPS;
+
+                nPR = nPR->pn;
+            }
+
+            nPR = listFiltroRec->pS; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE SBAGLIATA
+
+            while(nPR != NULL){
+                nodePos *nPS = malloc(sizeof(nodePos));
+
+                nPS->pos = nPR->pos;
+                nPS->pn = pFS->pS;
+                pFS->pS = nPS;
+
+                nPR = nPR->pn;
+            }
+
+            pFS->pn = *listFiltroSto;
+            *listFiltroSto = pFS;
+        }
+        else{
+            // SE IL NODO ESISTE E L'ATTRIBUTO È NESSUNO NON FACCIO NIENTE
+            // SE IL NODO ESISTE E L'ATTRIBUTO È MAGGIORE UGUALE O UGUALE DEVO VEDERE SE SONO CAMBIATI I NODI DI POSIZIONE E CONTROLLARE SE CAMBIANO ANCHE IL NUMERO DI LETTERE
+            // SE IL NODO È UGUALE NON MODIFICO IN MAGGIORE UGUALE
+
+            if(listFiltroRec->attr != NESSUNO){
+                if(listFiltroRec->attr > pFS->attr)
+                    pFS->attr = listFiltroRec->attr;
+
+                nodePos *nPR = listFiltroRec->pG;
+
+                while(nPR != NULL){
+                    nodePos *nPS = searchNodePos(pFS->pG, nPR->pos);
+
+                    if(nPS == NULL){
+                        nPS = malloc(sizeof(nodePos));
+                        nPS->pos = nPR->pos;
+                        nPS->pn = pFS->pG;
+                        pFS->pG = nPS;
+                    }
+                    nPR = nPR->pn;
+                }
+
+                nPR = listFiltroRec->pG;
+                int cont = 0;
+
+                while(nPR != NULL){
+                    cont++;
+                    nPR = nPR->pn;
+                }
+
+                // DEVO NOTIFICARE LA MODIFICA CON LA CREAZIONE DI UNA LISTA DI MODIFICHE
+                if(cont > listFiltroRec->num){
+                    listFiltroRec->num = cont;
+                    nodeCamb *nM = malloc(sizeof(nodeCamb));
+                    nM->nodeF = listFiltroRec;
+                    nM->pn = *listCambiamenti;
+                    *listCambiamenti = nM;
+                }
+
+                nPR = listFiltroRec->pS;
+
+                while(nPR != NULL){
+                    nodePos *nPS = searchNodePos(pFS->pS, nPR->pos);
+
+                    if(nPS == NULL){
+                        nPS = malloc(sizeof(nodePos));
+                        nPS->pos = nPR->pos;
+                        nPS->pn = pFS->pS;
+                        pFS->pS = nPS;
+                    }
+
+                    nPR = nPR->pn;
+                }
+            }
+        }
+
+        listFiltroRec = listFiltroRec->pn;
+    }
+}
+
+void filtraStringheCambiate(nodeString* listString, nodeCamb *listCamb) {
+    while(listCamb != NULL){
+        nodeFilter *pF = listCamb->nodeF;
+        nodeCamb *listCambSuc = listCamb->pn;
+
+        for(nodeString *headListString = listString; headListString != NULL; headListString = headListString->pn){
+            if(headListString->valid == false)
+                continue;
+            else{
+                if(pF->attr == MAGGIOREUGUALE){
+                    if(searchHashMapCar(&headListString->ph, pF->c) == NULL || searchHashMapCar(&headListString->ph, pF->c)->num < pF->num) {
+                        headListString->valid = false;
+                        continue;
+                    }
+                }
+                if(pF->attr == ESATTI){
+                    if(searchHashMapCar(&headListString->ph, pF->c) == NULL || searchHashMapCar(&headListString->ph, pF->c)->num != pF->num){
+                        headListString->valid = false;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        free(listCamb);
+        listCamb = listCambSuc;
+    }
+}
+
+void restoreListStringValid(nodeString *listString) {
+    while(listString != NULL){
+        listString->valid = true;
+        listString = listString->pn;
+    }
+}
+
 void nuovaPartita(nodeString* listString, int lengthBuff, int k){
     char* buffer = malloc(sizeof(char) * lengthBuff);
     nodeFilter *listFiltroRec = NULL;
-    //nodeFilter *listFiltroSto = NULL;
+    nodeFilter *listFiltroSto = NULL;
+    nodeCamb *listCambiamenti = NULL;
     int n;
 
     if(scanf("%[^\n]s", buffer) == EOF) exit(-3);
     while ((getchar()) != '\n');
 
     nodeString *pR = searchListString(listString, buffer);
-    createHashMap(pR);
+    createHashMapPos(pR);
 
     if(scanf("%d\n", &n) == EOF) exit(-1);
 
@@ -423,6 +592,7 @@ void nuovaPartita(nodeString* listString, int lengthBuff, int k){
 
         if(strcmp(buffer, "+inserisci_inizio") == 0){
             creazioneParole(&listString, lengthBuff, k, "+inserisci_fine");
+            filtraStringhe(&listString, listFiltroSto);
             continue;
         }
 
@@ -471,22 +641,29 @@ void nuovaPartita(nodeString* listString, int lengthBuff, int k){
             printf("\n");
             restoreConnections(&pR->ph);
             // Filtrare le stringhe
-            //filtraStringheRecente(&listString, listFiltroRec);
+            filtraStringhe(&listString, listFiltroRec);
             // Applicare il filtro recente a quello storico
-            //aggiornamentoFiltroStorico(&listFiltroRec, &listFiltroSto);
+            aggiornamentoFiltroStorico(listFiltroRec, &listFiltroSto, &listCambiamenti);
             // Vedere se ci sono delle modifiche in quello storico rispetto al recente (numero di lettere)
             // Applicare solo le lettere modificate nello storico (salvate in una lista apposita)
+            if(listCambiamenti != NULL){
+                filtraStringheCambiate(listString, listCambiamenti);
+                listCambiamenti = NULL;
+            }
+
             printf("%d\n", numeroStringheValide(listString));
             freeListaFiltro(&listFiltroRec);
         }
         else
-            printf("not exists\n");
+            printf("not_exists\n");
 
         if(n == 0)
             printf("ko\n");
     }
 
-    freeHashMap(&pR->ph);
+    restoreListStringValid(listString);
+    freeHashMapPos(&pR->ph);
+    freeListaFiltro(&listFiltroSto);
     free(buffer);
 }
 
@@ -509,10 +686,9 @@ int main(){
 
         if(strcmp(buffer, "+inserisci_inizio") == 0)
             creazioneParole(&list, lengthBuff, k, "+inserisci_fine");
-        else if(strcmp(buffer, "+nuova_partita") == 0){
+        else if(strcmp(buffer, "+nuova_partita") == 0)
             nuovaPartita(list, lengthBuff, k);
-            //restoreHashMapFiltro(&hashMapFiltro);
-        }
+
     } while (1);
 
     free(buffer);
