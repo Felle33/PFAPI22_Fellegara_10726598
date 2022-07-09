@@ -6,6 +6,7 @@
 const int HASHMAPSIZE = 7;
 
 typedef enum{NESSUNO, MAGGIOREUGUALE, ESATTI} attributoLettere;
+typedef enum {RED, BLACK} color;
 
 typedef struct nodeLetter{
     int pos;
@@ -45,6 +46,52 @@ typedef struct nodeCamb{
     nodeFilter *nodeF;
     struct nodeCamb *pn;
 }nodeCamb;
+
+typedef struct tree{
+    char *string;
+    struct tree* left;
+    struct tree* right;
+    struct tree* parent;
+    bool valid;
+    nodeHash** ph;
+    color col;
+}nodeTree;
+
+typedef struct{
+    int size;
+    int top;
+    nodeTree **S;
+} stack;
+
+void inizializeStack(stack *st){
+    st->size = 5000;
+    st->top = -1;
+    st->S = malloc(sizeof(nodeTree *) * st->size);
+}
+
+bool stack_empty(stack* st){
+    return st->top == -1 ? true : false;
+}
+
+void stack_addSize(stack *st) {
+    st->size = st->size + st->size;
+    if(realloc(st->S, st->size * sizeof(nodeTree *)) == NULL)
+        exit(-1);
+}
+
+void stack_push(stack* st, nodeTree *val){
+    if(st->top + 1 == st->size)
+        stack_addSize(st);
+    st->top++;
+    st->S[st->top] = val;
+}
+
+nodeTree *stack_pop(stack* st){
+    if(st->top == -1)
+        return NULL;
+    st->top--;
+    return st->S[st->top + 1];
+}
 
 void setLengthBuff(int *lengthBuff, int k){
     if(k > 17)
@@ -92,15 +139,167 @@ void insertHashMap(nodeHash*** hashMap, char car){
     }
 }
 
-void createHashMap(nodeString* s){
-    s->ph = (nodeHash**) malloc(sizeof(nodeHash*) * HASHMAPSIZE);
-    initializeHashMap(&s->ph);
-    char* c = s->s;
+void createHashMap(nodeTree *z){
+    z->ph = (nodeHash**) malloc(sizeof(nodeHash*) * HASHMAPSIZE);
+    initializeHashMap(&z->ph);
+    char* c = z->string;
 
     while(*c != '\0'){
-        insertHashMap(&(s->ph), *c);
+        insertHashMap(&(z->ph), *c);
         c++;
     }
+}
+
+nodeTree *searchBST(nodeTree* head, char* string){
+    while(head != NULL){
+        if(strcmp(string, head->string) == 0)
+            return head;
+        else if(strcmp(string, head->string) > 0)
+            head = head->right;
+        else
+            head = head->left;
+    }
+    return head;
+}
+
+// Ruota il nodo x a sinistra
+void leftRotate(nodeTree **root, nodeTree* x){
+    nodeTree *y = x->right;
+    x->right = y->left;
+
+    if(y->left != NULL)
+        y->left->parent = x;
+
+    y->parent = x->parent;
+
+    if(x->parent == NULL)
+        *root = y;
+    else if(x == x->parent->left)
+        x->parent->left = y;
+    else
+        x->parent->right = y;
+
+    y->left = x;
+    x->parent = y;
+}
+
+// Ruota il nodo x a destra
+void rightRotate(nodeTree **root, nodeTree* x){
+    nodeTree *y = x->left;
+    x->left = y->right;
+
+    if(y->right != NULL)
+        y->right->parent = x;
+
+    y->parent = x->parent;
+
+    if(x->parent == NULL)
+        *root = y;
+    else if(x == x->parent->left)
+        x->parent->left = y;
+    else
+        x->parent->right = y;
+
+    y->right = x;
+    x->parent = y;
+}
+
+nodeTree* createTreeNode(char *string, int k){
+    nodeTree* result = malloc(sizeof(nodeTree));
+    if(result != NULL){
+        result->string = malloc(sizeof(char) * k);
+        result->left = NULL;
+        result->right = NULL;
+        result->parent = NULL;
+        strcpy(result->string, string);
+        result->valid = true;
+        result->ph = NULL;
+        result->col = RED;
+    }
+    return result;
+}
+
+void RBInsertFixup(nodeTree **root, nodeTree *z) {
+    if(z == *root)
+        (*root)->col = BLACK;
+    else{
+        nodeTree *x = z->parent; // x è il padre di z
+        if(x->col == RED){
+            if(x == x->parent->left){
+                nodeTree *y = x->parent->right; // y è lo zio di z (fratello di x)
+
+                if(y == NULL || y->col == BLACK){
+                    if(z == x->left){
+                        x->col = BLACK;
+                        x->parent->col = RED;
+                        rightRotate(root, x->parent);
+                    }
+                    else{
+                        leftRotate(root, z->parent);
+                        z->col = BLACK;
+                        z->parent->col = RED;
+                        rightRotate(root, z->parent);
+                    }
+                }
+                else{
+                    x->col = BLACK;
+                    y->col = BLACK;
+                    x->parent->col = RED;
+                    RBInsertFixup(root, x->parent);
+                }
+
+            }
+            else{
+                nodeTree *y = x->parent->left; // y è lo zio di z (fratello di x)
+
+                if(y == NULL || y->col == BLACK){
+                    if(z == x->left){
+                        rightRotate(root, z->parent);
+                        z->col = BLACK;
+                        z->parent->col = RED;
+                        leftRotate(root, z->parent);
+                    }
+                    else{
+                        x->col = BLACK;
+                        x->parent->col = RED;
+                        leftRotate(root, x->parent);
+                    }
+                }
+                else{
+                    x->col = BLACK;
+                    y->col = BLACK;
+                    x->parent->col = RED;
+                    RBInsertFixup(root, x->parent);
+                }
+            }
+        }
+    }
+}
+
+void insertTree(nodeTree** head, char *string, int k){
+    nodeTree* y = NULL;
+    nodeTree* x = *head;
+
+    while(x != NULL){
+        y = x;
+        if(strcmp(string, x->string) > 0)
+            x = x->right;
+        else
+            x = x->left;
+    }
+
+    nodeTree* z = createTreeNode(string, k);
+    z->parent = y;
+    createHashMap(z);
+
+    if(y == NULL)
+        *head = z;
+    else if (strcmp(z->string, y->string) < 0)
+        y->left = z;
+    else
+        y->right = z;
+
+    RBInsertFixup(head, z);
 }
 
 void createHashMapPos(nodeString* pS){
@@ -128,28 +327,6 @@ void restoreConnections(nodeHash ***hashMap) {
     }
 }
 
-void insertLista(nodeString** list, char* buffer, int k){
-    nodeString* curr = *list, *prev = NULL;
-
-    while(curr != NULL && strcmp(curr->s, buffer) < 0){
-        prev = curr;
-        curr = curr->pn;
-    }
-
-    nodeString* ins = (nodeString*) malloc(sizeof(nodeString));
-    ins->pn = curr;
-    ins->valid = true;
-    ins->s = (char*) malloc(sizeof(char) * k);
-    strncpy(ins->s, buffer, k);
-    ins->ph = NULL;
-    createHashMap(ins);
-
-    if(prev != NULL)
-        prev->pn = ins;
-    else
-        *list = ins;
-}
-
 nodeString* searchListString(nodeString* list, char *buffer) {
     while(list != NULL){
         if(strcmp(list->s, buffer) == 0)
@@ -159,29 +336,34 @@ nodeString* searchListString(nodeString* list, char *buffer) {
     return NULL;
 }
 
-void creazioneParole(nodeString** list, int lengthBuff, int k, char* endString){
+void creazioneParole(nodeTree **list, int lengthBuff, int k, char *endString){
     char* buffer = malloc(sizeof(char) * lengthBuff);
 
     while(1){
         if(scanf("%[^\n]s", buffer) == EOF) exit(-2);
         while ((getchar()) != '\n');
         if(strcmp(buffer, endString) == 0) break;
-        insertLista(list, buffer, k);
+        insertTree(list, buffer, k);
     }
 
     free(buffer);
 }
 
-void freeListaString(nodeString** list){
-    nodeString *curS = *list, *sucS = NULL;
+void deleteAllTree(nodeTree *root) {
+    stack s;
+    inizializeStack(&s);
+    nodeTree *curr = root;
 
-    while(curS != NULL){
-        sucS = curS->pn;
-        free(curS->s);
+    while(curr != NULL || stack_empty(&s) == false){
+        while(curr != NULL){
+            stack_push(&s, curr);
+            curr = curr->left;
+        }
+        curr = stack_pop(&s);
+        nodeTree *del = curr;
 
         for(int i = 0; i < HASHMAPSIZE; i++){
-            nodeHash *curH = curS->ph[i], *sucH = NULL;
-
+            nodeHash *curH = del->ph[i], *sucH = NULL;
             while(curH != NULL){
                 sucH = curH->pn;
                 free(curH);
@@ -189,12 +371,13 @@ void freeListaString(nodeString** list){
             }
         }
 
-        free(curS->ph);
-        free(curS);
-        curS = sucS;
+        curr = curr->right;
+        free(del->ph);
+        free(del->string);
+        free(del);
     }
 
-    *list = NULL;
+    free(s.S);
 }
 
 void freeListaFiltro(nodeFilter **listFiltro) {
@@ -566,7 +749,7 @@ void restoreListStringValid(nodeString *listString) {
     }
 }
 
-void nuovaPartita(nodeString* listString, int lengthBuff, int k){
+/*void nuovaPartita(nodeTree *listString, int lengthBuff, int k){
     char* buffer = malloc(sizeof(char) * lengthBuff);
     nodeFilter *listFiltroRec = NULL;
     nodeFilter *listFiltroSto = NULL;
@@ -665,22 +848,24 @@ void nuovaPartita(nodeString* listString, int lengthBuff, int k){
     freeHashMapPos(&pR->ph);
     freeListaFiltro(&listFiltroSto);
     free(buffer);
-}
+}*/
 
 int main(){
     int k, lengthBuff;
-    nodeString* list = NULL;
+    //nodeString* list = NULL;
+    nodeTree* list = NULL;
+
 
     if(scanf("%d\n", &k) == EOF) exit(-1);
     k++;
     setLengthBuff(&lengthBuff, k);
 
     creazioneParole(&list, lengthBuff, k, "+nuova_partita");
-    nuovaPartita(list, lengthBuff, k);
+    //nuovaPartita(list, lengthBuff, k);
 
-    char* buffer = malloc(sizeof(char) * lengthBuff);
+    //char* buffer = malloc(sizeof(char) * lengthBuff);
 
-    do{
+    /*do{
         if(scanf("%[^\n]s", buffer) == EOF) break;
         while ((getchar()) != '\n');
 
@@ -689,9 +874,9 @@ int main(){
         else if(strcmp(buffer, "+nuova_partita") == 0)
             nuovaPartita(list, lengthBuff, k);
 
-    } while (1);
+    } while (1);*/
 
-    free(buffer);
-    freeListaString(&list);
+    //free(buffer);
+    deleteAllTree(list);
     return 0;
 }
