@@ -21,13 +21,6 @@ typedef struct nodeHash{
     nodeLetter* pl;
 }nodeHash;
 
-typedef struct nodeString{
-    char* s;
-    bool valid;
-    struct nodeString* pn;
-    nodeHash** ph;
-}nodeString;
-
 typedef struct nodePos{
     int pos;
     struct nodePos* pn;
@@ -110,6 +103,25 @@ void inOrderTraverseTree(nodeTree* head){
         }
         curr = stack_pop(&s);
         printNode(curr);
+        curr = curr->right;
+    }
+
+    free(s.S);
+}
+
+void inOrderTraverseTreeValid(nodeTree* head){
+    stack s;
+    inizializeStack(&s);
+    nodeTree *curr = head;
+
+    while(curr != NULL || stack_empty(&s) == false){
+        while(curr != NULL){
+            stack_push(&s, curr);
+            curr = curr->left;
+        }
+        curr = stack_pop(&s);
+        if(curr->valid)
+            printf("%s\n",curr->string);
         curr = curr->right;
     }
 
@@ -349,15 +361,6 @@ void restoreConnections(nodeHash ***hashMap) {
     }
 }
 
-nodeString* searchListString(nodeString* list, char *buffer) {
-    while(list != NULL){
-        if(strcmp(list->s, buffer) == 0)
-            return list;
-        list = list->pn;
-    }
-    return NULL;
-}
-
 void creazioneParole(nodeTree **tree, int lengthBuff, int k, char *endString){
     char* buffer = malloc(sizeof(char) * lengthBuff);
 
@@ -443,14 +446,6 @@ void freeHashMapPos(nodeHash*** hashMap){
             curH->pl = NULL;
             curH = curH->pn;
         }
-    }
-}
-
-void stampaFiltrate(nodeString *list) {
-    while(list != NULL){
-        if(list->valid)
-            printf("%s\n", list->s);
-        list = list->pn;
     }
 }
 
@@ -557,61 +552,132 @@ void letteraConnessioniFinite(nodeFilter **list, char c, int pos) {
 
 }
 
-void filtraStringhe(nodeString **listString, nodeFilter *listFilter) {
+nodeTree* treeMinimum(nodeTree* head){
+    while(head->left != NULL)
+        head = head->left;
+    return head;
+}
+
+nodeTree* treeSuccessor(nodeTree* head, char* string){
+    nodeTree* x = searchBST(head, string);
+    if(x->right != NULL)
+        return treeMinimum(x->right);
+
+    nodeTree* y = x->parent;
+    while(y != NULL && x == y->right){
+        x = y;
+        y = y->parent;
+    }
+    return y;
+}
+
+void deleteTreeNode(nodeTree **head, nodeTree *del) {
+    nodeTree *z = del;
+    nodeTree *y = NULL, *x = NULL;
+
+    if(z->left == NULL || z->right == NULL)
+        y = z;
+    else
+        y = treeSuccessor(*head, z->string);
+
+    if(y->left != NULL)
+        x = y->left;
+    else
+        x = y->right;
+
+    if(x != NULL)
+        x->parent = y->parent;
+
+    if(y->parent == NULL)
+        *head = x;
+    else if(y == y->parent->left)
+        y->parent->left = x;
+    else
+        y->parent->right = x;
+
+    if(y != z)
+        strcpy(z->string, y->string);
+}
+
+void filtraStringhe(nodeTree **treeStringValid, nodeFilter *listFilter) {
     while(listFilter != NULL){
-        for(nodeString *head = *listString; head != NULL; head = head->pn){
-            if(head->valid == false)
-                continue;
+        stack s;
+        inizializeStack(&s);
+        nodeTree *curr = *treeStringValid;
+
+        while(curr != NULL || stack_empty(&s) == false){
+            while(curr != NULL){
+                stack_push(&s, curr);
+                curr = curr->left;
+            }
+            curr = stack_pop(&s);
+            nodeTree *succ = curr->right;
 
             if(listFilter->attr == NESSUNO){
-                if(searchHashMapCar(&head->ph, listFilter->c) != NULL)
-                    head->valid = false;
+                if(searchHashMapCar(&curr->ph, listFilter->c) != NULL)
+                    deleteTreeNode(treeStringValid, curr);
                 continue;
             }
             else{
                 if(listFilter->attr == MAGGIOREUGUALE){
-                    if(searchHashMapCar(&head->ph, listFilter->c) == NULL || searchHashMapCar(&head->ph, listFilter->c)->num < listFilter->num) {
-                        head->valid = false;
+                    if(searchHashMapCar(&curr->ph, listFilter->c) == NULL || searchHashMapCar(&curr->ph, listFilter->c)->num < listFilter->num) {
+                        deleteTreeNode(treeStringValid, curr);
                         continue;
                     }
                 }
                 else{
-                    if(searchHashMapCar(&head->ph, listFilter->c) == NULL || searchHashMapCar(&head->ph, listFilter->c)->num != listFilter->num){
-                        head->valid = false;
+                    if(searchHashMapCar(&curr->ph, listFilter->c) == NULL || searchHashMapCar(&curr->ph, listFilter->c)->num != listFilter->num){
+                        curr->valid = false;
                         continue;
                     }
 
                 }
                 nodePos *pPos = listFilter->pG;
 
-                while(pPos != NULL && head->valid == true){
-                    if(head->s[pPos->pos] != listFilter->c)
-                        head->valid = false;
+                while(pPos != NULL){
+                    if(curr->string[pPos->pos] != listFilter->c){
+                        deleteTreeNode(treeStringValid, curr);
+                        break;
+                    }
 
                     pPos = pPos->pn;
                 }
 
                 pPos = listFilter->pS;
 
-                while(pPos != NULL && head->valid == true){
-                    if(head->s[pPos->pos] == listFilter->c)
-                        head->valid = false;
+                while(pPos != NULL){
+                    if(curr->string[pPos->pos] == listFilter->c){
+                        deleteTreeNode(treeStringValid, curr);
+                        break;
+                    }
 
                     pPos = pPos->pn;
                 }
             }
+            curr = succ;
         }
+
+        free(s.S);
         listFilter = listFilter->pn;
     }
 }
 
-int numeroStringheValide(nodeString *listString) {
+int numeroStringheValide(nodeTree *treeStringValid) {
     int cont = 0;
-    while(listString != NULL){
-        if(listString->valid)
-            cont++;
-        listString = listString->pn;
+    stack s;
+    inizializeStack(&s);
+    nodeTree *curr = treeStringValid;
+
+    while(curr != NULL || stack_empty(&s) == false){
+        while(curr != NULL){
+            stack_push(&s, curr);
+            curr = curr->left;
+        }
+        curr = stack_pop(&s);
+        curr++;
+        curr = curr->right;
     }
+    free(s.S);
     return cont;
 }
 
@@ -735,44 +801,75 @@ void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFilt
     }
 }
 
-void filtraStringheCambiate(nodeString* listString, nodeCamb *listCamb) {
+void filtraStringheCambiate(nodeTree **treeStringValid, nodeCamb *listCamb) {
     while(listCamb != NULL){
         nodeFilter *pF = listCamb->nodeF;
         nodeCamb *listCambSuc = listCamb->pn;
 
-        for(nodeString *headListString = listString; headListString != NULL; headListString = headListString->pn){
-            if(headListString->valid == false)
-                continue;
-            else{
-                if(pF->attr == MAGGIOREUGUALE){
-                    if(searchHashMapCar(&headListString->ph, pF->c) == NULL || searchHashMapCar(&headListString->ph, pF->c)->num < pF->num) {
-                        headListString->valid = false;
-                        continue;
-                    }
-                }
-                if(pF->attr == ESATTI){
-                    if(searchHashMapCar(&headListString->ph, pF->c) == NULL || searchHashMapCar(&headListString->ph, pF->c)->num != pF->num){
-                        headListString->valid = false;
-                        continue;
-                    }
+        stack s;
+        inizializeStack(&s);
+        nodeTree *curr = *treeStringValid;
+
+        while(curr != NULL || stack_empty(&s) == false){
+            while(curr != NULL){
+                stack_push(&s, curr);
+                curr = curr->left;
+            }
+            curr = stack_pop(&s);
+            nodeTree *succ = curr->right;
+
+            if(pF->attr == MAGGIOREUGUALE){
+                if(searchHashMapCar(&curr->ph, pF->c) == NULL || searchHashMapCar(&curr->ph, pF->c)->num < pF->num) {
+                    deleteTreeNode(treeStringValid, curr);
+                    continue;
                 }
             }
+            if(pF->attr == ESATTI){
+                if(searchHashMapCar(&curr->ph, pF->c) == NULL || searchHashMapCar(&curr->ph, pF->c)->num != pF->num){
+                    deleteTreeNode(treeStringValid, curr);
+                    continue;
+                }
+            }
+
+            curr = succ;
         }
 
+        free(s.S);
         free(listCamb);
         listCamb = listCambSuc;
     }
 }
 
-void restoreListStringValid(nodeString *listString) {
-    while(listString != NULL){
-        listString->valid = true;
-        listString = listString->pn;
-    }
+nodeTree *createTreeValidRec(nodeTree *treeString, nodeTree *parent, int k){
+    if(treeString == NULL)
+        return NULL;
+    nodeTree *newNode = createTreeNode(parent, treeString->string, k);
+    newNode->left = createTreeValidRec(treeString->left, newNode, k);
+    newNode->right = createTreeValidRec(treeString->right, newNode, k);
+    return newNode;
 }
 
-/*void nuovaPartita(nodeTree *treeString, int lengthBuff, int k){
+void restoreTreeStringValid(nodeTree *treeString) {
+    stack s;
+    inizializeStack(&s);
+    nodeTree *curr = treeString;
+
+    while(curr != NULL || stack_empty(&s) == false){
+        while(curr != NULL){
+            stack_push(&s, curr);
+            curr = curr->left;
+        }
+        curr = stack_pop(&s);
+        curr->valid = true;
+        curr = curr->right;
+    }
+
+    free(s.S);
+}
+
+void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
     char* buffer = malloc(sizeof(char) * lengthBuff);
+    nodeTree *treeStringValid = NULL;
     nodeFilter *listFiltroRec = NULL;
     nodeFilter *listFiltroSto = NULL;
     nodeCamb *listCambiamenti = NULL;
@@ -781,8 +878,9 @@ void restoreListStringValid(nodeString *listString) {
     if(scanf("%[^\n]s", buffer) == EOF) exit(-3);
     while ((getchar()) != '\n');
 
-    nodeTree *pR = searchBST(treeString, buffer);
+    nodeTree *pR = searchBST(*treeString, buffer);
     createHashMapPos(pR);
+    treeStringValid = createTreeValidRec(*treeString, NULL, k);
 
     if(scanf("%d\n", &n) == EOF) exit(-1);
 
@@ -791,13 +889,15 @@ void restoreListStringValid(nodeString *listString) {
         while ((getchar()) != '\n');
 
         if(strcmp(buffer, "+stampa_filtrate") == 0){
-            stampaFiltrate(treeString);
+            inOrderTraverseTreeValid(treeStringValid);
             continue;
         }
 
         if(strcmp(buffer, "+inserisci_inizio") == 0){
-            creazioneParole(&treeString, lengthBuff, k, "+inserisci_fine");
-            filtraStringhe(&treeString, listFiltroSto);
+            creazioneParole(treeString, lengthBuff, k, "+inserisci_fine");
+            deleteAllTree(treeStringValid);
+            treeStringValid = createTreeValidRec(*treeString, NULL, k);
+            filtraStringhe(&treeStringValid, listFiltroSto);
             continue;
         }
 
@@ -806,7 +906,7 @@ void restoreListStringValid(nodeString *listString) {
             break;
         }
 
-        if(searchBST(treeString, buffer) != NULL){
+        if(searchBST(*treeString, buffer) != NULL){
             n--;
             for(int i = 0; i < k - 1; i++){
                 if(buffer[i] == pR->string[i]){
@@ -846,17 +946,17 @@ void restoreListStringValid(nodeString *listString) {
             printf("\n");
             restoreConnections(&pR->ph);
             // Filtrare le stringhe
-            filtraStringhe(&treeString, listFiltroRec);
+            filtraStringhe(&treeStringValid, listFiltroRec);
             // Applicare il filtro recente a quello storico
             aggiornamentoFiltroStorico(listFiltroRec, &listFiltroSto, &listCambiamenti);
             // Vedere se ci sono delle modifiche in quello storico rispetto al recente (numero di lettere)
             // Applicare solo le lettere modificate nello storico (salvate in una lista apposita)
             if(listCambiamenti != NULL){
-                filtraStringheCambiate(treeString, listCambiamenti);
+                filtraStringheCambiate(&treeStringValid, listCambiamenti);
                 listCambiamenti = NULL;
             }
 
-            printf("%d\n", numeroStringheValide(treeString));
+            printf("%d\n", numeroStringheValide(treeStringValid));
             freeListaFiltro(&listFiltroRec);
         }
         else
@@ -866,11 +966,13 @@ void restoreListStringValid(nodeString *listString) {
             printf("ko\n");
     }
 
-    restoreListStringValid(treeString);
+    //inOrderTraverseTree(*treeString);
+    deleteAllTree(treeStringValid);
+    //restoreTreeStringValid(treeString);
     freeHashMapPos(&pR->ph);
     freeListaFiltro(&listFiltroSto);
     free(buffer);
-}*/
+}
 
 int main(){
     int k, lengthBuff;
@@ -883,23 +985,23 @@ int main(){
     setLengthBuff(&lengthBuff, k);
 
     creazioneParole(&treeString, lengthBuff, k, "+nuova_partita");
-    inOrderTraverseTree(treeString);
-    //nuovaPartita(list, lengthBuff, k);
+    nuovaPartita(&treeString, lengthBuff, k);
 
-    //char* buffer = malloc(sizeof(char) * lengthBuff);
+    char* buffer = malloc(sizeof(char) * lengthBuff);
 
-    /*do{
+    do{
         if(scanf("%[^\n]s", buffer) == EOF) break;
         while ((getchar()) != '\n');
 
-        if(strcmp(buffer, "+inserisci_inizio") == 0)
-            creazioneParole(&list, lengthBuff, k, "+inserisci_fine");
+        if(strcmp(buffer, "+inserisci_inizio") == 0){
+            creazioneParole(&treeString, lengthBuff, k, "+inserisci_fine");
+        }
         else if(strcmp(buffer, "+nuova_partita") == 0)
-            nuovaPartita(list, lengthBuff, k);
+            nuovaPartita(&treeString, lengthBuff, k);
 
-    } while (1);*/
+    } while (1);
 
-    //free(buffer);
+    free(buffer);
     deleteAllTree(treeString);
     return 0;
 }
