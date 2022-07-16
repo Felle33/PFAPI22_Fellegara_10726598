@@ -386,13 +386,28 @@ void freeListaFiltro(nodeFilter **listFiltro) {
     *listFiltro = NULL;
 }
 
-nodeTree *createTreeValidRec(nodeTree *treeString, nodeTree *parent, int k){
-    if(treeString == NULL)
-        return NULL;
-    nodeTree *newNode = createTreeNode(parent, treeString->string, k, treeString->col);
-    newNode->left = createTreeValidRec(treeString->left, newNode, k);
-    newNode->right = createTreeValidRec(treeString->right, newNode, k);
-    return newNode;
+nodeTree *createTreeValidIte(nodeTree *treeString, int k){
+    nodeTree *root = createTreeNode(NULL, treeString->string, k, treeString->col);
+    nodeTree *curr = root;
+
+    while(treeString != NULL){
+        if(treeString->left != NULL && curr->left == NULL){
+            curr->left = createTreeNode(curr, treeString->left->string, k, treeString->left->col);
+            curr = curr->left;
+            treeString = treeString->left;
+        }
+        else if(treeString->right != NULL && curr->right == NULL){
+            curr->right = createTreeNode(curr, treeString->right->string, k, treeString->right->col);
+            curr = curr->right;
+            treeString = treeString->right;
+        }
+        else{
+            curr = curr->parent;
+            treeString = treeString->parent;
+        }
+    }
+
+    return root;
 }
 
 void inOrderTraverseTreeValid(nodeTree* treeString){
@@ -690,7 +705,7 @@ void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
     while ((getchar()) != '\n');
 
     nodeTree *pR = searchBST(*treeString, buffer);
-    treeStringValid = createTreeValidRec(*treeString, NULL, k);
+    treeStringValid = createTreeValidIte(*treeString, k);
 
     if(scanf("%d\n", &n) == EOF) exit(-1);
 
