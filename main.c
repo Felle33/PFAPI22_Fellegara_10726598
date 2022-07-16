@@ -507,7 +507,6 @@ void filtraStringhe(nodeTree **treeStringValid, nodeFilter *listFilter, int k) {
             filtraMaggioreUguale(treeStringValid, *treeStringValid, listFilter, k);
         else
             filtraEsatti(treeStringValid, *treeStringValid, listFilter, k);
-
         listFilter = listFilter->pn;
     }
 }
@@ -620,6 +619,66 @@ void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFilt
     }
 }
 
+bool filtraParola(char *string, nodeFilter *listFiltroSto, int k){
+    while(listFiltroSto != NULL){
+        if(listFiltroSto->attr == NESSUNO){
+            for(int i = 0; i < k - 1; i++)
+                if(string[i] == listFiltroSto->c)
+                    return false;
+        }
+        else{
+            int cont = 0;
+            if(listFiltroSto->attr == ESATTI){
+                for(int i = 0; i < k - 1; i++)
+                    if(string[i] == listFiltroSto->c)
+                        cont++;
+                if(cont != listFiltroSto->num)
+                    return false;
+            }
+            else{
+                for(int i = 0; i < k - 1; i++)
+                    if(string[i] == listFiltroSto->c)
+                        cont++;
+                if(cont < listFiltroSto->num)
+                    return false;
+            }
+
+            nodePos *nPS = listFiltroSto->pG;
+
+            while(nPS != NULL){
+                if(string[nPS->pos] != listFiltroSto->c)
+                    return false;
+                nPS = nPS->pn;
+            }
+
+            nPS = listFiltroSto->pS;
+
+            while(nPS != NULL){
+                if(string[nPS->pos] == listFiltroSto->c)
+                    return false;
+                nPS = nPS->pn;
+            }
+        }
+        listFiltroSto = listFiltroSto->pn;
+    }
+    return true;
+}
+
+void inserisciInizio(nodeTree **treeString, nodeTree **treeStringValid, nodeFilter *listFiltroSto, int lengthBuff, int k) {
+    char* buffer = malloc(sizeof(char) * lengthBuff);
+
+    while(1){
+        if(scanf("%[^\n]s", buffer) == EOF) exit(-2);
+        while ((getchar()) != '\n');
+        if(strcmp(buffer, "+inserisci_fine") == 0) break;
+        insertTree(treeString, buffer, k);
+        if(filtraParola(buffer, listFiltroSto, k) == true)
+            insertTree(treeStringValid, buffer, k);
+    }
+
+    free(buffer);
+}
+
 void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
     char* buffer = malloc(sizeof(char) * lengthBuff);
     nodeTree *treeStringValid = NULL;
@@ -645,9 +704,10 @@ void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
         }
 
         if(strcmp(buffer, "+inserisci_inizio") == 0){
-            creazioneParole(treeString, lengthBuff, k, "+inserisci_fine");
-            deleteAllTree(treeStringValid);
-            treeStringValid = createTreeValidRec(*treeString, NULL, k);
+            inserisciInizio(treeString, &treeStringValid, listFiltroSto, lengthBuff, k);
+            //creazioneParole(treeString, lengthBuff, k, "+inserisci_fine");
+            //deleteAllTree(treeStringValid);
+            //treeStringValid = createTreeValidRec(*treeString, NULL, k);
             filtraStringhe(&treeStringValid, listFiltroSto, k);
             continue;
         }
@@ -702,7 +762,6 @@ void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
             // Applicare il filtro recente a quello storico
             // Vedere se ci sono delle modifiche in quello storico rispetto al recente (numero di lettere)
             // Se ci sono delle modifiche, aggiorno la lista recente e poi la applico
-            // Applicare solo le lettere modificate nello storico (salvate in una lista apposita)
             aggiornamentoFiltroStorico(listFiltroRec, &listFiltroSto);
             // Filtrare le stringhe
             filtraStringhe(&treeStringValid, listFiltroRec, k);
