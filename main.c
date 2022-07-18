@@ -7,18 +7,13 @@ typedef enum{NESSUNO, MAGGIOREUGUALE, ESATTI} attributoLettere;
 typedef enum {RED, BLACK} color;
 
 const int numberInput = 100;
-
-typedef struct nodeList{
-    char *string;
-    struct nodeList* pn;
-}nodeList;
+int k;
 
 typedef struct tree{
     char *string;
     struct tree* left;
     struct tree* right;
     struct tree* parent;
-    nodeList* pList;
     color col;
 }nodeTree;
 
@@ -36,14 +31,14 @@ typedef struct nodeFilter{
     nodePos* pS;
 }nodeFilter;
 
-void setLengthBuff(int *lengthBuff, int k){
-    if(k > 17)
+void setLengthBuff(int *lengthBuff){
+    if(k > 18)
         *lengthBuff = k + 1;
     else
-        *lengthBuff = 18;
+        *lengthBuff = 19;
 }
 
-nodeTree* createTreeNode(nodeTree* parent, char *string, int k, color col){
+nodeTree* createTreeNode(nodeTree* parent, char *string, color col){
     nodeTree* result = malloc(sizeof(nodeTree));
     if(result != NULL){
         result->string = malloc(sizeof(char) * k);
@@ -51,18 +46,9 @@ nodeTree* createTreeNode(nodeTree* parent, char *string, int k, color col){
         result->left = NULL;
         result->right = NULL;
         result->parent = parent;
-        result->pList = NULL;
         result->col = col;
     }
     return result;
-}
-
-nodeList* createNodeList(char *string, int k){
-    nodeList *node = malloc(sizeof(nodeList));
-    node->string = malloc(sizeof(char) * k);
-    strcpy(node->string, string);
-    node->pn = NULL;
-    return node;
 }
 
 void leftRotate(nodeTree **root, nodeTree* x){
@@ -162,7 +148,7 @@ void RBInsertFixup(nodeTree **root, nodeTree *z) {
     }
 }
 
-void insertTree(nodeTree** head, char *string, int k){
+void insertTree(nodeTree** head, char *string){
     nodeTree* y = NULL;
     nodeTree* x = *head;
 
@@ -174,7 +160,7 @@ void insertTree(nodeTree** head, char *string, int k){
             x = x->right;
     }
 
-    nodeTree* z = createTreeNode(y, string, k, RED);
+    nodeTree* z = createTreeNode(y, string, RED);
 
     if(y == NULL)
         *head = z;
@@ -204,12 +190,6 @@ nodeTree* treeMinimum(nodeTree* head){
     return head;
 }
 
-nodeTree* treeMaximum(nodeTree* head){
-    while(head->right != NULL)
-        head = head->right;
-    return head;
-}
-
 nodeTree* treeSuccessor(nodeTree* treeString, nodeTree* x){
     if(x->right != NULL)
         return treeMinimum(x->right);
@@ -222,28 +202,14 @@ nodeTree* treeSuccessor(nodeTree* treeString, nodeTree* x){
     return y;
 }
 
-nodeTree *treePredecessor(nodeTree *treeString, nodeTree *x) {
-    if(x->left != NULL)
-        return treeMaximum(x->left);
-
-    nodeTree* y = x->parent;
-
-    while(y != NULL && x == y->left){
-        x = y;
-        y = y->parent;
-    }
-    return y;
-}
-
-void creazioneParole(nodeTree **tree, int lengthBuff, int k, char *endString){
+void creazioneParole(nodeTree **treeStringValid, int lengthBuff, char *endString){
     char *buffer = malloc(sizeof(char) * lengthBuff);
 
     while(1){
-        if(scanf("%[^\n]s", buffer) == EOF) exit(-2);
-        while ((getchar()) != '\n');
+        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
         if(strcmp(buffer, endString) == 0) break;
-        insertTree(tree, buffer, k);
-
+        buffer[k - 1] = '\0';
+        insertTree(treeStringValid, buffer);
     }
 
     free(buffer);
@@ -306,7 +272,6 @@ void letteraInesistente(nodeFilter **list, char c) {
         pF->pn = *list;
         *list = pF;
     }
-
 }
 
 void letteraPosizioneSbagliata(nodeFilter **list, char c, int pos) {
@@ -357,7 +322,6 @@ void letteraConnessioniFinite(nodeFilter **list, char c, int pos) {
         pPos->pn = pF->pS;
         pF->pS = pPos;
     }
-
 }
 
 void freeListaFiltro(nodeFilter **listFiltro) {
@@ -387,29 +351,25 @@ void freeListaFiltro(nodeFilter **listFiltro) {
     *listFiltro = NULL;
 }
 
-void inOrderTraverseListValid(nodeList *listStringValid){
-    while(listStringValid != NULL){
-        printf("%s\n", listStringValid->string);
-        listStringValid = listStringValid->pn;
-    }
+void inOrderTraverseTreeValid(nodeTree *treeStringValid){
+    if(treeStringValid == NULL) return;
+    inOrderTraverseTreeValid(treeStringValid->left);
+    printf("%s\n", treeStringValid->string);
+    inOrderTraverseTreeValid(treeStringValid->right);
 }
 
-int numeroStringheValide(nodeList *listStringValid) {
-    int cont = 0;
-    while(listStringValid != NULL){
-        cont++;
-        listStringValid = listStringValid->pn;
-    }
-    return cont;
+int numeroStringheValide(nodeTree *treeStringValid) {
+    if(treeStringValid == NULL) return 0;
+    return 1 + numeroStringheValide(treeStringValid->left) + numeroStringheValide(treeStringValid->right);
 }
 
-bool controlloPosizioni(nodeList *curr, nodeFilter *nodeFil){
+bool controlloPosizioni(nodeTree *curr, nodeFilter *nodeFil){
     bool delete = false;
     nodePos *pPos = nodeFil->pG;
 
     while(pPos != NULL && delete == false){
         if(curr->string[pPos->pos] != nodeFil->c)
-            delete = true;//deleteTreeNode(treeStringValid, curr);
+            delete = true;
 
         pPos = pPos->pn;
     }
@@ -418,7 +378,7 @@ bool controlloPosizioni(nodeList *curr, nodeFilter *nodeFil){
 
     while(pPos != NULL && delete == false) {
         if (curr->string[pPos->pos] == nodeFil->c)
-            delete = true;//deleteTreeNode(treeStringValid, curr);
+            delete = true;
 
         pPos = pPos->pn;
     }
@@ -426,113 +386,166 @@ bool controlloPosizioni(nodeList *curr, nodeFilter *nodeFil){
     return delete;
 }
 
-void filtraNessuno(nodeTree *treeString, nodeList **listStringValid, char c, int k){
-    nodeList *curr = *listStringValid, *prev = NULL, *succ = NULL;
+void insertNodeTreeInvalid(nodeTree **treeStringInvalid, nodeTree *ins){
+    nodeTree* y = NULL;
+    nodeTree* x = *treeStringInvalid;
 
-    while(curr != NULL){
-        succ = curr->pn;
-        for(int i = 0; i < k - 1; i++)
-            if(curr->string[i] == c){
-                if(prev == NULL)
-                    *listStringValid = curr->pn;
-                else
-                    prev->pn = curr->pn;
-
-                searchBST(treeString, curr->string)->pList = NULL;
-                free(curr->string);
-                free(curr);
-                curr = prev;
-                break;
-            }
-        prev = curr;
-        curr = succ;
+    while(x != NULL){
+        y = x;
+        if(strcmp(ins->string, x->string) < 0)
+            x = x->left;
+        else
+            x = x->right;
     }
+
+    ins->parent = y;
+
+    if(y == NULL)
+        *treeStringInvalid = ins;
+    else if (strcmp(ins->string, y->string) < 0)
+        y->left = ins;
+    else
+        y->right = ins;
+
+    RBInsertFixup(treeStringInvalid, ins);
 }
 
-void filtraMaggioreUguale(nodeTree *treeString, nodeList **listStringValid, nodeFilter *nodeFilt, int k){
-    nodeList *curr = *listStringValid, *prev = NULL, *succ = NULL;
+nodeTree *moveNode(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *del){
+    nodeTree *y = NULL, *x = NULL;
 
-    while(curr != NULL){
-        succ = curr->pn;
-        if(controlloPosizioni(curr, nodeFilt) == true){
-            if(prev == NULL)
-                *listStringValid = curr->pn;
+    if(del->left == NULL || del->right == NULL)
+        y = del;
+    else
+        y = treeSuccessor(*treeStringValid, del);
+
+    if(y->left != NULL)
+        x = y->left;
+    else
+        x = y->right;
+
+    if(x != NULL)
+        x->parent = y->parent;
+
+    if(y->parent == NULL)
+        *treeStringValid = x;
+    else if(y == y->parent->left)
+        y->parent->left = x;
+    else
+        y->parent->right = x;
+
+    if(y != del){
+        y->parent = del->parent;
+        y->left = del->left;
+        y->right = del->right;
+        if(del->parent != NULL){
+            if(del == del->parent->left)
+                del->parent->left = y;
             else
-                prev->pn = curr->pn;
-
-            searchBST(treeString, curr->string)->pList = NULL;
-            free(curr->string);
-            free(curr);
-            curr = prev;
+                del->parent->right = y;
         }
-        else{
-            int cont = 0;
-            for(int i = 0; i < k - 1 && cont < nodeFilt->num; i++)
-                if(curr->string[i] == nodeFilt->c)
-                    cont++;
-            if(cont < nodeFilt->num){
-                if(prev == NULL)
-                    *listStringValid = curr->pn;
-                else
-                    prev->pn = curr->pn;
+        else
+            *treeStringValid = y;
 
-                searchBST(treeString, curr->string)->pList = NULL;
-                free(curr->string);
-                free(curr);
-                curr = prev;
-            }
+        if(del->left != NULL)
+            del->left->parent = y;
+
+        if(del->right != NULL)
+            del->right->parent = y;
+
+        del->parent = NULL;
+        del->left = NULL;
+        del->right = NULL;
+        del->col = RED;
+        insertNodeTreeInvalid(treeStringInvalid, del);
+        return y;
+    }
+
+    del->parent = NULL;
+    del->left = NULL;
+    del->right = NULL;
+    del->col = RED;
+    insertNodeTreeInvalid(treeStringInvalid, del);
+    return x;
+}
+
+void filtraNessuno(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, char c){
+    if(nodeTr == NULL) return;
+    bool delete;
+    do {
+        delete = false;
+        for(int i = 0; i < k - 1 && delete == false; i++){
+            if(nodeTr->string[i] == c)
+                delete = true;
         }
-        prev = curr;
-        curr = succ;
+
+        if(delete == true){
+            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+        }
+        else
+            break;
+    }while(nodeTr != NULL);
+
+    if(nodeTr != NULL){
+        filtraNessuno(treeStringValid, treeStringInvalid, nodeTr->left, c);
+        filtraNessuno(treeStringValid, treeStringInvalid, nodeTr->right, c);
     }
 }
 
-void filtraEsatti(nodeTree *treeString, nodeList **listStringValid, nodeFilter *nodeFilt, int k){
-    nodeList *curr = *listStringValid, *prev = NULL, *succ = NULL;
-
-    while(curr != NULL){
-        succ = curr->pn;
-        if(controlloPosizioni(curr, nodeFilt) == true){
-            if(prev == NULL)
-                *listStringValid = curr->pn;
-            else
-                prev->pn = curr->pn;
-
-            searchBST(treeString, curr->string)->pList = NULL;
-            free(curr->string);
-            free(curr);
-            curr = prev;
+void filtraMaggioreUguale(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, nodeFilter *nodeFilt){
+    if(nodeTr == NULL) return;
+    int cont, min;
+    do {
+        cont = 0;
+        min = nodeFilt->num;
+        for(int i = 0; i < k - 1 && cont < min; i++){
+            if(nodeTr->string[i] == nodeFilt->c)
+                cont++;
         }
-        else{
-            int cont = 0;
-            for(int i = 0; i < k - 1; i++)
-                if(curr->string[i] == nodeFilt->c)
-                    cont++;
-            if(cont != nodeFilt->num){
-                if(prev == NULL)
-                    *listStringValid = curr->pn;
-                else
-                    prev->pn = curr->pn;
 
-                searchBST(treeString, curr->string)->pList = NULL;
-                free(curr->string);
-                free(curr);
-                curr = prev;
-            }
-        }
-        prev = curr;
-        curr = succ;
+        if(cont < min || controlloPosizioni(nodeTr, nodeFilt) == true)
+            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+        else
+            break;
+
+    }while(nodeTr != NULL);
+
+    if(nodeTr != NULL){
+        filtraMaggioreUguale(treeStringValid, treeStringInvalid,  nodeTr->left, nodeFilt);
+        filtraMaggioreUguale(treeStringValid, treeStringInvalid,  nodeTr->right, nodeFilt);
     }
 }
 
-void filtraStringhe(nodeTree *treeString, nodeList **listStringValid, nodeFilter *listFilter, int k) {
+void filtraEsatti(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, nodeFilter *nodeFilt){
+    if(nodeTr == NULL) return;
+    int cont, esatti;
+    do {
+        cont = 0;
+        esatti = nodeFilt->num;
+        for(int i = 0; i < k - 1; i++){
+            if(nodeTr->string[i] == nodeFilt->c)
+                cont++;
+        }
+
+        if(cont != esatti || controlloPosizioni(nodeTr, nodeFilt) == true)
+            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+        else
+            break;
+    }while(nodeTr != NULL);
+
+    if(nodeTr != NULL){
+        filtraEsatti(treeStringValid, treeStringInvalid, nodeTr->left, nodeFilt);
+        filtraEsatti(treeStringValid, treeStringInvalid, nodeTr->right, nodeFilt);
+    }
+}
+
+void filtraStringhe(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeFilter *listFilter) {
     while(listFilter != NULL){
         if(listFilter->attr == NESSUNO)
-            filtraNessuno(treeString, listStringValid, listFilter->c, k);
+            filtraNessuno(treeStringValid, treeStringInvalid, *treeStringValid, listFilter->c);
         else if(listFilter->attr == MAGGIOREUGUALE)
-            filtraMaggioreUguale(treeString, listStringValid, listFilter, k);
+            filtraMaggioreUguale(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
         else
-            filtraEsatti(treeString, listStringValid, listFilter, k);
+            filtraEsatti(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
         listFilter = listFilter->pn;
     }
 }
@@ -645,7 +658,7 @@ void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFilt
     }
 }
 
-bool filtraParola(char *string, nodeFilter *listFiltroSto, int k){
+bool filtraParola(char *string, nodeFilter *listFiltroSto){
     while(listFiltroSto != NULL){
         if(listFiltroSto->attr == NESSUNO){
             for(int i = 0; i < k - 1; i++)
@@ -690,106 +703,73 @@ bool filtraParola(char *string, nodeFilter *listFiltroSto, int k){
     return true;
 }
 
-void inserisciInizio(nodeTree **treeString, nodeList **listStringValid, nodeFilter *listFiltroSto, int lengthBuff, int k) {
+void inserisciInizio(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeFilter *listFiltroSto, int lengthBuff) {
     char* buffer = malloc(sizeof(char) * lengthBuff);
 
     while(1){
-        if(scanf("%[^\n]s", buffer) == EOF) exit(-2);
-        while ((getchar()) != '\n');
-        if(strcmp(buffer, "+inserisci_fine") == 0) break;
-        insertTree(treeString, buffer, k);
-        if(filtraParola(buffer, listFiltroSto, k) == true){
-            nodeTree *curr = searchBST(*treeString, buffer);
-            nodeTree *prev = curr;
-
-            do{
-                prev = treePredecessor(*treeString, prev);
-            }
-            while(prev != NULL && prev->pList == NULL);
-
-            nodeList *nodeString = createNodeList(buffer, k);
-            curr->pList = nodeString;
-
-            if(prev == NULL){
-                nodeString->pn = *listStringValid;
-                *listStringValid = nodeString;
-            }
-            else{
-                nodeString->pn = prev->pList->pn;
-                prev->pList->pn = nodeString;
-            }
-        }
+        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
+        if(strcmp(buffer, "+inserisci_fine\n") == 0) break;
+        buffer[k - 1] = '\0';
+        if(filtraParola(buffer, listFiltroSto) == true)
+            insertTree(treeStringValid, buffer);
+        else
+            insertTree(treeStringInvalid, buffer);
     }
 
     free(buffer);
 }
 
-nodeList* createListStringValidIt(nodeTree *treeString, int k){
-    nodeTree *succ = treeMinimum(treeString);
-    nodeList *head = createNodeList(succ->string, k);
-    succ->pList = head;
-    nodeList *curr = head;
-
-    while((succ = treeSuccessor(treeString, succ)) != NULL){
-        curr->pn = createNodeList(succ->string, k);
-        succ->pList = curr->pn;
-        curr = curr->pn;
-    }
-
-    return head;
+void deleteTreeStringValid(nodeTree *treeStringValid, nodeTree **treeStringInvalid) {
+    if(treeStringValid == NULL) return;
+    deleteTreeStringValid(treeStringValid->left, treeStringInvalid);
+    deleteTreeStringValid(treeStringValid->right, treeStringInvalid);
+    treeStringValid->parent = NULL;
+    treeStringValid->left = NULL;
+    treeStringValid->right = NULL;
+    treeStringValid->col = RED;
+    insertNodeTreeInvalid(treeStringInvalid, treeStringValid);
 }
 
-void deleteListString(nodeList **list) {
-    nodeList *curr = *list;
-    while(curr != NULL){
-        nodeList *succ = curr->pn;
-        free(curr->string);
-        free(curr);
-        curr = succ;
-    }
-    *list = NULL;
-}
-
-void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
+void nuovaPartita(nodeTree **treeStringValid, int lengthBuff){
     char* buffer = malloc(sizeof(char) * lengthBuff);
-    nodeList *listStringValid = NULL;
+    nodeTree *treeStringInvalid = NULL;
     nodeFilter *listFiltroRec = NULL;
     nodeFilter *listFiltroSto = NULL;
     int n;
 
-    if(scanf("%[^\n]s", buffer) == EOF) exit(-3);
-    while ((getchar()) != '\n');
+    if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
+    buffer[k - 1] = '\0';
 
-    nodeTree *pR = searchBST(*treeString, buffer);
-    listStringValid = createListStringValidIt(*treeString, k);
+    nodeTree *pR = searchBST(*treeStringValid, buffer);
 
-    if(scanf("%d\n", &n) == EOF) exit(-1);
+    if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
+    n = (int) strtol(buffer, NULL, 10);
 
     while(n > 0){
-        if(scanf("%[^\n]s", buffer) == EOF) exit(-2);
-        while ((getchar()) != '\n');
+        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
 
-        if(strcmp(buffer, "+stampa_filtrate") == 0){
-            inOrderTraverseListValid(listStringValid);
+        if(strcmp(buffer, "+stampa_filtrate\n") == 0){
+            inOrderTraverseTreeValid(*treeStringValid);
             continue;
         }
 
-        if(strcmp(buffer, "+inserisci_inizio") == 0){
-            inserisciInizio(treeString, &listStringValid, listFiltroSto, lengthBuff, k);
-            //filtraStringhe(&listStringValid, listFiltroSto, k);
+        if(strcmp(buffer, "+inserisci_inizio\n") == 0){
+            inserisciInizio(treeStringValid, &treeStringInvalid, listFiltroSto, lengthBuff);
             continue;
         }
+
+        buffer[k - 1] = '\0';
 
         if(strcmp(buffer, pR->string) == 0){
             printf("ok\n");
             break;
         }
 
-        if(searchBST(*treeString, buffer) != NULL){
+        if(searchBST(treeStringInvalid, buffer) != NULL || searchBST(*treeStringValid, buffer) != NULL){
             n--;
             for(int i = 0; i < k - 1; i++){
                 if(buffer[i] == pR->string[i]){
-                    printf("+");
+                    putchar('+');
                     letteraGiusta(&listFiltroRec, buffer[i], i);
                 }
                 else{
@@ -805,7 +785,7 @@ void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
                     }
 
                     if(exist == false){
-                        printf("/");
+                        putchar('/');
                         letteraInesistente(&listFiltroRec, buffer[i]);
                     }
                     else{
@@ -816,63 +796,67 @@ void nuovaPartita(nodeTree **treeString, int lengthBuff, int k){
                         }
 
                         if(lettereNonInPosizioneCorretta <= lettereLibere){
-                            printf("|");
+                            putchar('|');
                             letteraPosizioneSbagliata(&listFiltroRec, buffer[i], i);
                         }
                         else{
-                            printf("/");
+                            putchar('/');
                             letteraConnessioniFinite(&listFiltroRec, buffer[i], i);
                         }
                     }
                 }
             }
-            printf("\n");
+            putchar('\n');
             // Applicare il filtro recente a quello storico
             // Vedere se ci sono delle modifiche in quello storico rispetto al recente (numero di lettere)
             // Se ci sono delle modifiche, aggiorno la lista recente e poi la applico
             aggiornamentoFiltroStorico(listFiltroRec, &listFiltroSto);
             // Filtrare le stringhe
-            filtraStringhe(*treeString, &listStringValid, listFiltroRec, k);
-            printf("%d\n", numeroStringheValide(listStringValid));
+            filtraStringhe(treeStringValid, &treeStringInvalid, listFiltroRec);
+            printf("%d\n", numeroStringheValide(*treeStringValid));
             freeListaFiltro(&listFiltroRec);
         }
         else
-            printf("not_exists\n");
+            puts("not_exists");
 
         if(n == 0)
-            printf("ko\n");
+            puts("ko");
     }
 
-    deleteListString(&listStringValid);
+    deleteTreeStringValid(*treeStringValid, &treeStringInvalid);
+    *treeStringValid = treeStringInvalid;
     freeListaFiltro(&listFiltroSto);
     free(buffer);
 }
 
 int main() {
-    int k, lengthBuff;
-    nodeTree* treeString = NULL;
+    int lengthBuff;
+    nodeTree* treeStringValid = NULL;
 
+    char* buffer = malloc(sizeof(char) * 10);
 
-    if(scanf("%d\n", &k) == EOF) exit(-1);
+    if(fgets(buffer, 10, stdin) == NULL) exit(-1);
+
+    k = (int) strtol(buffer, NULL, 10);
     k++;
-    setLengthBuff(&lengthBuff, k);
+    setLengthBuff(&lengthBuff);
 
-    creazioneParole(&treeString, lengthBuff, k, "+nuova_partita");
-    nuovaPartita(&treeString, lengthBuff, k);
+    creazioneParole(&treeStringValid, lengthBuff, "+nuova_partita\n");
+    nuovaPartita(&treeStringValid, lengthBuff);
 
-    char* buffer = malloc(sizeof(char) * lengthBuff);
+    buffer = realloc(buffer, sizeof(char) * lengthBuff);
+
     do{
-        if(scanf("%[^\n]s", buffer) == EOF) break;
-        while ((getchar()) != '\n');
+        if(fgets(buffer, lengthBuff, stdin) == NULL) break;
 
-        if(strcmp(buffer, "+inserisci_inizio") == 0)
-            creazioneParole(&treeString, lengthBuff, k, "+inserisci_fine");
-        else if(strcmp(buffer, "+nuova_partita") == 0)
-            nuovaPartita(&treeString, lengthBuff, k);
+        if(strcmp(buffer, "+inserisci_inizio\n") == 0)
+            creazioneParole(&treeStringValid, lengthBuff, "+inserisci_fine\n");
+        else if(strcmp(buffer, "+nuova_partita\n") == 0)
+            nuovaPartita(&treeStringValid, lengthBuff);
 
     } while (1);
 
     free(buffer);
-    deleteAllTree(treeString);
+    deleteAllTree(treeStringValid);
     return 0;
 }
