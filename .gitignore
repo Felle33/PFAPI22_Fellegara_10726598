@@ -2,6 +2,7 @@ cmake-build-debug
 *.txt
 .idea
 outputValgrind
+outputCallgrind
 outputMassif
 api
 test_cases

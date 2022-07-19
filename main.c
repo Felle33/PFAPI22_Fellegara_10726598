@@ -9,13 +9,13 @@ typedef enum {RED, BLACK} color;
 const int numberInput = 100;
 int k;
 
-typedef struct tree{
+typedef struct treeString{
     char *string;
-    struct tree* left;
-    struct tree* right;
-    struct tree* parent;
+    struct treeString* left;
+    struct treeString* right;
+    struct treeString* parent;
     color col;
-}nodeTree;
+}nodeTreeString;
 
 typedef struct nodePos{
     int pos;
@@ -38,21 +38,17 @@ void setLengthBuff(int *lengthBuff){
         *lengthBuff = 19;
 }
 
-nodeTree* createTreeNode(nodeTree* parent, char *string, color col){
-    nodeTree* result = malloc(sizeof(nodeTree));
-    if(result != NULL){
-        result->string = malloc(sizeof(char) * k);
-        strcpy(result->string, string);
-        result->left = NULL;
-        result->right = NULL;
-        result->parent = parent;
-        result->col = col;
-    }
-    return result;
+void createTreeNodeString(nodeTreeString* parent, nodeTreeString* node, char *string, color col){
+    node->string = malloc(sizeof(char) * k);
+    strcpy(node->string, string);
+    node->left = NULL;
+    node->right = NULL;
+    node->parent = parent;
+    node->col = col;
 }
 
-void leftRotate(nodeTree **root, nodeTree* x){
-    nodeTree *y = x->right;
+void leftRotate(nodeTreeString **root, nodeTreeString* x){
+    nodeTreeString *y = x->right;
     x->right = y->left;
 
     if(y->left != NULL)
@@ -71,8 +67,8 @@ void leftRotate(nodeTree **root, nodeTree* x){
     x->parent = y;
 }
 
-void rightRotate(nodeTree **root, nodeTree* x){
-    nodeTree *y = x->left;
+void rightRotate(nodeTreeString **root, nodeTreeString* x){
+    nodeTreeString *y = x->left;
     x->left = y->right;
 
     if(y->right != NULL)
@@ -91,14 +87,14 @@ void rightRotate(nodeTree **root, nodeTree* x){
     x->parent = y;
 }
 
-void RBInsertFixup(nodeTree **root, nodeTree *z) {
+void RBInsertFixup(nodeTreeString **root, nodeTreeString *z) {
     if(z == *root)
         (*root)->col = BLACK;
     else{
-        nodeTree *x = z->parent; // x è il padre di z
+        nodeTreeString *x = z->parent; // x è il padre di z
         if(x->col == RED){
             if(x == x->parent->left){
-                nodeTree *y = x->parent->right; // y è lo zio di z (fratello di x)
+                nodeTreeString *y = x->parent->right; // y è lo zio di z (fratello di x)
 
                 if(y == NULL || y->col == BLACK){
                     if(z == x->left){
@@ -122,7 +118,7 @@ void RBInsertFixup(nodeTree **root, nodeTree *z) {
 
             }
             else{
-                nodeTree *y = x->parent->left; // y è lo zio di z (fratello di x)
+                nodeTreeString *y = x->parent->left; // y è lo zio di z (fratello di x)
 
                 if(y == NULL || y->col == BLACK){
                     if(z == x->left){
@@ -148,9 +144,9 @@ void RBInsertFixup(nodeTree **root, nodeTree *z) {
     }
 }
 
-void insertTree(nodeTree** head, char *string){
-    nodeTree* y = NULL;
-    nodeTree* x = *head;
+void insertTree(nodeTreeString** head, nodeTreeString* z, char *string){
+    nodeTreeString* y = NULL;
+    nodeTreeString* x = *head;
 
     while(x != NULL){
         y = x;
@@ -160,7 +156,7 @@ void insertTree(nodeTree** head, char *string){
             x = x->right;
     }
 
-    nodeTree* z = createTreeNode(y, string, RED);
+    createTreeNodeString(y, z, string, RED);
 
     if(y == NULL)
         *head = z;
@@ -172,11 +168,12 @@ void insertTree(nodeTree** head, char *string){
     RBInsertFixup(head, z);
 }
 
-nodeTree* searchBST(nodeTree* head, char* string){
+nodeTreeString* searchBST(nodeTreeString* head, char* string){
     while(head != NULL){
-        if(strcmp(string, head->string) == 0)
+        int n = strcmp(string, head->string);
+        if(n == 0)
             return head;
-        else if(strcmp(string, head->string) < 0)
+        else if(n < 0)
             head = head->left;
         else
             head = head->right;
@@ -184,17 +181,17 @@ nodeTree* searchBST(nodeTree* head, char* string){
     return head;
 }
 
-nodeTree* treeMinimum(nodeTree* head){
+nodeTreeString* treeMinimum(nodeTreeString* head){
     while(head->left != NULL)
         head = head->left;
     return head;
 }
 
-nodeTree* treeSuccessor(nodeTree* treeString, nodeTree* x){
+nodeTreeString* treeSuccessor(nodeTreeString* treeString, nodeTreeString* x){
     if(x->right != NULL)
         return treeMinimum(x->right);
 
-    nodeTree* y = x->parent;
+    nodeTreeString* y = x->parent;
     while(y != NULL && x == y->right){
         x = y;
         y = y->parent;
@@ -202,25 +199,38 @@ nodeTree* treeSuccessor(nodeTree* treeString, nodeTree* x){
     return y;
 }
 
-void creazioneParole(nodeTree **treeStringValid, int lengthBuff, char *endString){
-    char *buffer = malloc(sizeof(char) * lengthBuff);
+void creazioneParole(nodeTreeString **treeStringValid, int lengthBuff, char *endString){
+    int i = 0;
+    char buffer[numberInput][lengthBuff];
+    nodeTreeString *z;
 
     while(1){
-        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
-        if(strcmp(buffer, endString) == 0) break;
-        buffer[k - 1] = '\0';
-        insertTree(treeStringValid, buffer);
+        if(fgets(buffer[i], lengthBuff, stdin) == NULL) exit(-2);
+        if(strcmp(buffer[i], endString) == 0) break;
+        buffer[i][k - 1] = '\0';
+        i++;
+        if(i == numberInput){
+            z = malloc(sizeof(nodeTreeString) * i);
+            for(int j = 0; j < i; j++)
+                insertTree(treeStringValid, &z[j], buffer[j]);
+            i = 0;
+        }
     }
 
-    free(buffer);
+    if(i != 0){
+        z = malloc(sizeof(nodeTreeString) * i);
+        for(int j = 0; j < i; j++)
+            insertTree(treeStringValid, &z[j], buffer[j]);
+    }
+
+    i = 0;
 }
 
-void deleteAllTree(nodeTree *root) {
+void deleteAllTree(nodeTreeString *root) {
     if(root == NULL) return;
     deleteAllTree(root->left);
     deleteAllTree(root->right);
     free(root->string);
-    free(root);
 }
 
 // Cerca se esiste un carattere nella lista di filtraggio e ritorna il suo puntatore oppure NULL
@@ -351,19 +361,19 @@ void freeListaFiltro(nodeFilter **listFiltro) {
     *listFiltro = NULL;
 }
 
-void inOrderTraverseTreeValid(nodeTree *treeStringValid){
+void inOrderTraverseTreeValid(nodeTreeString *treeStringValid){
     if(treeStringValid == NULL) return;
     inOrderTraverseTreeValid(treeStringValid->left);
     printf("%s\n", treeStringValid->string);
     inOrderTraverseTreeValid(treeStringValid->right);
 }
 
-int numeroStringheValide(nodeTree *treeStringValid) {
+int numeroStringheValide(nodeTreeString *treeStringValid) {
     if(treeStringValid == NULL) return 0;
     return 1 + numeroStringheValide(treeStringValid->left) + numeroStringheValide(treeStringValid->right);
 }
 
-bool controlloPosizioni(nodeTree *curr, nodeFilter *nodeFil){
+bool controlloPosizioni(nodeTreeString *curr, nodeFilter *nodeFil){
     bool delete = false;
     nodePos *pPos = nodeFil->pG;
 
@@ -386,9 +396,9 @@ bool controlloPosizioni(nodeTree *curr, nodeFilter *nodeFil){
     return delete;
 }
 
-void insertNodeTreeInvalid(nodeTree **treeStringInvalid, nodeTree *ins){
-    nodeTree* y = NULL;
-    nodeTree* x = *treeStringInvalid;
+void insertNodeTreeInvalid(nodeTreeString **treeStringInvalid, nodeTreeString *ins){
+    nodeTreeString* y = NULL;
+    nodeTreeString* x = *treeStringInvalid;
 
     while(x != NULL){
         y = x;
@@ -410,8 +420,8 @@ void insertNodeTreeInvalid(nodeTree **treeStringInvalid, nodeTree *ins){
     RBInsertFixup(treeStringInvalid, ins);
 }
 
-nodeTree *moveNode(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *del){
-    nodeTree *y = NULL, *x = NULL;
+nodeTreeString *moveNode(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *del){
+    nodeTreeString *y = NULL, *x = NULL;
 
     if(del->left == NULL || del->right == NULL)
         y = del;
@@ -468,7 +478,7 @@ nodeTree *moveNode(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nod
     return x;
 }
 
-void filtraNessuno(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, char c){
+void filtraNessuno(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, char c){
     if(nodeTr == NULL) return;
     bool delete;
     do {
@@ -491,7 +501,7 @@ void filtraNessuno(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nod
     }
 }
 
-void filtraMaggioreUguale(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, nodeFilter *nodeFilt){
+void filtraMaggioreUguale(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
     if(nodeTr == NULL) return;
     int cont, min;
     do {
@@ -515,7 +525,7 @@ void filtraMaggioreUguale(nodeTree **treeStringValid, nodeTree **treeStringInval
     }
 }
 
-void filtraEsatti(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeTree *nodeTr, nodeFilter *nodeFilt){
+void filtraEsatti(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
     if(nodeTr == NULL) return;
     int cont, esatti;
     do {
@@ -538,7 +548,7 @@ void filtraEsatti(nodeTree **treeStringValid, nodeTree **treeStringInvalid, node
     }
 }
 
-void filtraStringhe(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeFilter *listFilter) {
+void filtraStringhe(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeFilter *listFilter) {
     while(listFilter != NULL){
         if(listFilter->attr == NESSUNO)
             filtraNessuno(treeStringValid, treeStringInvalid, *treeStringValid, listFilter->c);
@@ -703,23 +713,23 @@ bool filtraParola(char *string, nodeFilter *listFiltroSto){
     return true;
 }
 
-void inserisciInizio(nodeTree **treeStringValid, nodeTree **treeStringInvalid, nodeFilter *listFiltroSto, int lengthBuff) {
-    char* buffer = malloc(sizeof(char) * lengthBuff);
+void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeFilter *listFiltroSto, int lengthBuff) {
+    char buffer[lengthBuff];
 
     while(1){
         if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
         if(strcmp(buffer, "+inserisci_fine\n") == 0) break;
         buffer[k - 1] = '\0';
+        nodeTreeString *z = malloc(sizeof(nodeTreeString));
         if(filtraParola(buffer, listFiltroSto) == true)
-            insertTree(treeStringValid, buffer);
+            insertTree(treeStringValid, z, buffer);
         else
-            insertTree(treeStringInvalid, buffer);
+            insertTree(treeStringInvalid, z, buffer);
     }
 
-    free(buffer);
 }
 
-void deleteTreeStringValid(nodeTree *treeStringValid, nodeTree **treeStringInvalid) {
+void deleteTreeStringValid(nodeTreeString *treeStringValid, nodeTreeString **treeStringInvalid) {
     if(treeStringValid == NULL) return;
     deleteTreeStringValid(treeStringValid->left, treeStringInvalid);
     deleteTreeStringValid(treeStringValid->right, treeStringInvalid);
@@ -730,9 +740,9 @@ void deleteTreeStringValid(nodeTree *treeStringValid, nodeTree **treeStringInval
     insertNodeTreeInvalid(treeStringInvalid, treeStringValid);
 }
 
-void nuovaPartita(nodeTree **treeStringValid, int lengthBuff){
-    char* buffer = malloc(sizeof(char) * lengthBuff);
-    nodeTree *treeStringInvalid = NULL;
+void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
+    char buffer[lengthBuff];
+    nodeTreeString *treeStringInvalid = NULL;
     nodeFilter *listFiltroRec = NULL;
     nodeFilter *listFiltroSto = NULL;
     int n;
@@ -740,7 +750,7 @@ void nuovaPartita(nodeTree **treeStringValid, int lengthBuff){
     if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
     buffer[k - 1] = '\0';
 
-    nodeTree *pR = searchBST(*treeStringValid, buffer);
+    nodeTreeString *pR = searchBST(*treeStringValid, buffer);
 
     if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
     n = (int) strtol(buffer, NULL, 10);
@@ -826,25 +836,23 @@ void nuovaPartita(nodeTree **treeStringValid, int lengthBuff){
     deleteTreeStringValid(*treeStringValid, &treeStringInvalid);
     *treeStringValid = treeStringInvalid;
     freeListaFiltro(&listFiltroSto);
-    free(buffer);
 }
 
 int main() {
     int lengthBuff;
-    nodeTree* treeStringValid = NULL;
+    nodeTreeString* treeStringValid = NULL;
+    char input[10];
 
-    char* buffer = malloc(sizeof(char) * 10);
+    if(fgets(input, 10, stdin) == NULL) exit(-1);
 
-    if(fgets(buffer, 10, stdin) == NULL) exit(-1);
-
-    k = (int) strtol(buffer, NULL, 10);
+    k = (int) strtol(input, NULL, 10);
     k++;
     setLengthBuff(&lengthBuff);
 
     creazioneParole(&treeStringValid, lengthBuff, "+nuova_partita\n");
     nuovaPartita(&treeStringValid, lengthBuff);
 
-    buffer = realloc(buffer, sizeof(char) * lengthBuff);
+    char buffer[lengthBuff];
 
     do{
         if(fgets(buffer, lengthBuff, stdin) == NULL) break;
@@ -856,7 +864,7 @@ int main() {
 
     } while (1);
 
-    free(buffer);
-    deleteAllTree(treeStringValid);
+    /*deleteAllTree(treeStringValid);
+    free(treeStringValid);*/
     return 0;
 }
