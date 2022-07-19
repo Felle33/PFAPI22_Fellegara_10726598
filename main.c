@@ -38,13 +38,17 @@ void setLengthBuff(int *lengthBuff){
         *lengthBuff = 19;
 }
 
-void createTreeNodeString(nodeTreeString* parent, nodeTreeString* node, char *string, color col){
-    node->string = malloc(sizeof(char) * k);
-    strcpy(node->string, string);
-    node->left = NULL;
-    node->right = NULL;
-    node->parent = parent;
-    node->col = col;
+nodeTreeString* createTreeNodeString(nodeTreeString* parent, char *string, color col){
+    nodeTreeString* result = malloc(sizeof(nodeTreeString));
+    if(result != NULL){
+        result->string = malloc(sizeof(char) * k);
+        strcpy(result->string, string);
+        result->left = NULL;
+        result->right = NULL;
+        result->parent = parent;
+        result->col = col;
+    }
+    return result;
 }
 
 void leftRotate(nodeTreeString **root, nodeTreeString* x){
@@ -144,7 +148,7 @@ void RBInsertFixup(nodeTreeString **root, nodeTreeString *z) {
     }
 }
 
-void insertTree(nodeTreeString** head, nodeTreeString* z, char *string){
+void insertTree(nodeTreeString** head, char *string){
     nodeTreeString* y = NULL;
     nodeTreeString* x = *head;
 
@@ -156,7 +160,7 @@ void insertTree(nodeTreeString** head, nodeTreeString* z, char *string){
             x = x->right;
     }
 
-    createTreeNodeString(y, z, string, RED);
+    nodeTreeString* z = createTreeNodeString(y, string, RED);
 
     if(y == NULL)
         *head = z;
@@ -200,30 +204,14 @@ nodeTreeString* treeSuccessor(nodeTreeString* treeString, nodeTreeString* x){
 }
 
 void creazioneParole(nodeTreeString **treeStringValid, int lengthBuff, char *endString){
-    int i = 0;
-    char buffer[numberInput][lengthBuff];
-    nodeTreeString *z;
+    char buffer[lengthBuff];
 
     while(1){
-        if(fgets(buffer[i], lengthBuff, stdin) == NULL) exit(-2);
-        if(strcmp(buffer[i], endString) == 0) break;
-        buffer[i][k - 1] = '\0';
-        i++;
-        if(i == numberInput){
-            z = malloc(sizeof(nodeTreeString) * i);
-            for(int j = 0; j < i; j++)
-                insertTree(treeStringValid, &z[j], buffer[j]);
-            i = 0;
-        }
+        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
+        if(strcmp(buffer, endString) == 0) break;
+        buffer[k - 1] = '\0';
+        insertTree(treeStringValid, buffer);
     }
-
-    if(i != 0){
-        z = malloc(sizeof(nodeTreeString) * i);
-        for(int j = 0; j < i; j++)
-            insertTree(treeStringValid, &z[j], buffer[j]);
-    }
-
-    i = 0;
 }
 
 void deleteAllTree(nodeTreeString *root) {
@@ -720,11 +708,10 @@ void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStri
         if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
         if(strcmp(buffer, "+inserisci_fine\n") == 0) break;
         buffer[k - 1] = '\0';
-        nodeTreeString *z = malloc(sizeof(nodeTreeString));
         if(filtraParola(buffer, listFiltroSto) == true)
-            insertTree(treeStringValid, z, buffer);
+            insertTree(treeStringValid, buffer);
         else
-            insertTree(treeStringInvalid, z, buffer);
+            insertTree(treeStringInvalid, buffer);
     }
 
 }
@@ -771,7 +758,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
         buffer[k - 1] = '\0';
 
         if(strcmp(buffer, pR->string) == 0){
-            printf("ok\n");
+            puts("ok");
             break;
         }
 
@@ -864,7 +851,7 @@ int main() {
 
     } while (1);
 
-    /*deleteAllTree(treeStringValid);
-    free(treeStringValid);*/
+    deleteAllTree(treeStringValid);
+    free(treeStringValid);
     return 0;
 }
