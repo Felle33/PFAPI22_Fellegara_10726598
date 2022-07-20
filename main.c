@@ -6,7 +6,6 @@
 typedef enum{NESSUNO, MAGGIOREUGUALE, ESATTI} attributoLettere;
 typedef enum {RED, BLACK} color;
 
-const int numberInput = 100;
 int k;
 
 typedef struct treeString{
@@ -219,6 +218,16 @@ void deleteAllTree(nodeTreeString *root) {
     deleteAllTree(root->left);
     deleteAllTree(root->right);
     free(root->string);
+    free(root);
+}
+
+nodePos* searchNodePos(nodePos *listNodePos, int pos) {
+    while(listNodePos != NULL){
+        if(listNodePos->pos == pos)
+            return listNodePos;
+        listNodePos = listNodePos->pn;
+    }
+    return NULL;
 }
 
 // Cerca se esiste un carattere nella lista di filtraggio e ritorna il suo puntatore oppure NULL
@@ -231,35 +240,44 @@ nodeFilter* searchListFilter(nodeFilter *list, char c) {
     return NULL;
 }
 
-void letteraGiusta(nodeFilter **list, char c, int pos) {
-    nodeFilter *pF = searchListFilter(*list, c);
-    nodePos* pPos = malloc(sizeof(nodePos));
-    pPos->pos = pos;
+void letteraGiusta(nodeFilter *listFilterSto, nodeFilter **listFilterRec, char c, int pos) {
+    nodeFilter *puntatoreNodoFiltroSto = searchListFilter(listFilterSto, c);
+    nodeFilter *puntatoreNodoFiltroRec = searchListFilter(*listFilterRec, c);
 
-    if(pF == NULL){
-        pF = malloc(sizeof(nodeFilter));
-        pF->c = c;
-        pF->num = 1;
-        pF->attr = MAGGIOREUGUALE;
-        pF->pS = NULL;
+    if(puntatoreNodoFiltroRec == NULL){
+        puntatoreNodoFiltroRec = malloc(sizeof(nodeFilter));
+        puntatoreNodoFiltroRec->c = c;
+        puntatoreNodoFiltroRec->num = 1;
+        puntatoreNodoFiltroRec->attr = MAGGIOREUGUALE;
+        puntatoreNodoFiltroRec->pS = NULL;
 
-        pF->pG = pPos;
-        pPos->pn = NULL;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pG, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            puntatoreNodoFiltroRec->pG = pPos;
+            pPos->pn = NULL;
+        }
+        else
+            puntatoreNodoFiltroRec->pG = NULL;
 
-        pF->pn = *list;
-        *list = pF;
+        puntatoreNodoFiltroRec->pn = *listFilterRec;
+        *listFilterRec = puntatoreNodoFiltroRec;
     }
     else{
-        pF->num++;
-        pPos->pn = pF->pG;
-        pF->pG = pPos;
+        puntatoreNodoFiltroRec->num++;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pG, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            pPos->pn = puntatoreNodoFiltroRec->pG;
+            puntatoreNodoFiltroRec->pG = pPos;
+        }
     }
 }
 
-void letteraInesistente(nodeFilter **list, char c) {
-    nodeFilter *pF = searchListFilter(*list, c);
+void letteraInesistente(nodeFilter *listFilterSto, nodeFilter **listFilterRec, char c) {
+    nodeFilter *pF = searchListFilter(listFilterSto, c);
 
-    if(pF == NULL){
+    if(pF == NULL && searchListFilter(*listFilterRec, c) == NULL){
         pF = malloc(sizeof(nodeFilter));
         pF->c = c;
         pF->num = 0;
@@ -267,58 +285,76 @@ void letteraInesistente(nodeFilter **list, char c) {
         pF->pG = NULL;
         pF->pS = NULL;
 
-        pF->pn = *list;
-        *list = pF;
+        pF->pn = *listFilterRec;
+        *listFilterRec = pF;
     }
 }
 
-void letteraPosizioneSbagliata(nodeFilter **list, char c, int pos) {
-    nodeFilter *pF = searchListFilter(*list, c);
-    nodePos *pPos = malloc(sizeof(nodePos));
-    pPos->pos = pos;
+void letteraPosizioneSbagliata(nodeFilter *listFilterSto, nodeFilter **listFilterRec, char c, int pos) {
+    nodeFilter *puntatoreNodoFiltroSto = searchListFilter(listFilterSto, c);
+    nodeFilter *puntatoreNodoFiltroRec = searchListFilter(*listFilterRec, c);
 
-    if(pF == NULL){
-        pF = malloc(sizeof(nodeFilter));
-        pF->c = c;
-        pF->num = 1;
-        pF->attr = MAGGIOREUGUALE;
-        pF->pG = NULL;
+    if(puntatoreNodoFiltroRec == NULL){
+        puntatoreNodoFiltroRec = malloc(sizeof(nodeFilter));
+        puntatoreNodoFiltroRec->c = c;
+        puntatoreNodoFiltroRec->num = 1;
+        puntatoreNodoFiltroRec->attr = MAGGIOREUGUALE;
+        puntatoreNodoFiltroRec->pG = NULL;
 
-        pF->pS = pPos;
-        pPos->pn = NULL;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pS, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            puntatoreNodoFiltroRec->pS = pPos;
+            pPos->pn = NULL;
+        }
+        else
+            puntatoreNodoFiltroRec->pS = NULL;
 
-        pF->pn = *list;
-        *list = pF;
+        puntatoreNodoFiltroRec->pn = *listFilterRec;
+        *listFilterRec = puntatoreNodoFiltroRec;
     }
     else{
-        pF->num++;
-        pPos->pn = pF->pS;
-        pF->pS = pPos;
+        puntatoreNodoFiltroRec->num++;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pS, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            pPos->pn = puntatoreNodoFiltroRec->pS;
+            puntatoreNodoFiltroRec->pS = pPos;
+        }
     }
 }
 
-void letteraConnessioniFinite(nodeFilter **list, char c, int pos) {
-    nodeFilter *pF = searchListFilter(*list, c);
-    nodePos *pPos = malloc(sizeof(nodePos));
-    pPos->pos = pos;
+void letteraConnessioniFinite(nodeFilter *listFilterSto, nodeFilter **listFilterRec, char c, int pos) {
+    nodeFilter *puntatoreNodoFiltroSto = searchListFilter(listFilterSto, c);
+    nodeFilter *puntatoreNodoFiltroRec = searchListFilter(*listFilterRec, c);
 
-    if(pF == NULL){
-        pF = malloc(sizeof(nodeFilter));
-        pF->c = c;
-        pF->num = 0;
-        pF->attr = ESATTI;
-        pF->pG = NULL;
+    if(puntatoreNodoFiltroRec == NULL){
+        puntatoreNodoFiltroRec = malloc(sizeof(nodeFilter));
+        puntatoreNodoFiltroRec->c = c;
+        puntatoreNodoFiltroRec->num = 0;
+        puntatoreNodoFiltroRec->attr = ESATTI;
+        puntatoreNodoFiltroRec->pG = NULL;
 
-        pF->pS = pPos;
-        pPos->pn = NULL;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pS, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            puntatoreNodoFiltroRec->pS = pPos;
+            pPos->pn = NULL;
+        }
+        else
+            puntatoreNodoFiltroRec->pS = NULL;
 
-        pF->pn = *list;
-        *list = pF;
+        puntatoreNodoFiltroRec->pn = *listFilterRec;
+        *listFilterRec = puntatoreNodoFiltroRec;
     }
     else{
-        pF->attr = ESATTI;
-        pPos->pn = pF->pS;
-        pF->pS = pPos;
+        puntatoreNodoFiltroRec->attr = ESATTI;
+        if(puntatoreNodoFiltroSto == NULL || (puntatoreNodoFiltroSto != NULL && searchNodePos(puntatoreNodoFiltroSto->pS, pos) == NULL)){
+            nodePos *pPos = malloc(sizeof(nodePos));
+            pPos->pos = pos;
+            pPos->pn = puntatoreNodoFiltroRec->pS;
+            puntatoreNodoFiltroRec->pS = pPos;
+        }
     }
 }
 
@@ -469,7 +505,7 @@ nodeTreeString *moveNode(nodeTreeString **treeStringValid, nodeTreeString **tree
 void filtraNessuno(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, char c){
     if(nodeTr == NULL) return;
     bool delete;
-    do {
+    while(nodeTr != NULL){
         delete = false;
         for(int i = 0; i < k - 1 && delete == false; i++){
             if(nodeTr->string[i] == c)
@@ -481,7 +517,7 @@ void filtraNessuno(nodeTreeString **treeStringValid, nodeTreeString **treeString
         }
         else
             break;
-    }while(nodeTr != NULL);
+    }
 
     if(nodeTr != NULL){
         filtraNessuno(treeStringValid, treeStringInvalid, nodeTr->left, c);
@@ -492,20 +528,25 @@ void filtraNessuno(nodeTreeString **treeStringValid, nodeTreeString **treeString
 void filtraMaggioreUguale(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
     if(nodeTr == NULL) return;
     int cont, min;
-    do {
-        cont = 0;
-        min = nodeFilt->num;
-        for(int i = 0; i < k - 1 && cont < min; i++){
-            if(nodeTr->string[i] == nodeFilt->c)
-                cont++;
-        }
-
-        if(cont < min || controlloPosizioni(nodeTr, nodeFilt) == true)
+    while(nodeTr != NULL){
+        if(controlloPosizioni(nodeTr, nodeFilt) == true)
             nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+        else if(nodeFilt->num != -1){
+            cont = 0;
+            min = nodeFilt->num;
+            for(int i = 0; i < k - 1 && cont < min; i++){
+                if(nodeTr->string[i] == nodeFilt->c)
+                    cont++;
+            }
+
+            if(cont < min)
+                nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+            else
+                break;
+        }
         else
             break;
-
-    }while(nodeTr != NULL);
+    }
 
     if(nodeTr != NULL){
         filtraMaggioreUguale(treeStringValid, treeStringInvalid,  nodeTr->left, nodeFilt);
@@ -516,19 +557,25 @@ void filtraMaggioreUguale(nodeTreeString **treeStringValid, nodeTreeString **tre
 void filtraEsatti(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
     if(nodeTr == NULL) return;
     int cont, esatti;
-    do {
-        cont = 0;
-        esatti = nodeFilt->num;
-        for(int i = 0; i < k - 1; i++){
-            if(nodeTr->string[i] == nodeFilt->c)
-                cont++;
-        }
-
-        if(cont != esatti || controlloPosizioni(nodeTr, nodeFilt) == true)
+    while(nodeTr != NULL){
+        if(controlloPosizioni(nodeTr, nodeFilt) == true)
             nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+        else if(nodeFilt->num != -1){
+            cont = 0;
+            esatti = nodeFilt->num;
+            for(int i = 0; i < k - 1; i++){
+                if(nodeTr->string[i] == nodeFilt->c)
+                    cont++;
+            }
+
+            if(cont != esatti)
+                nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+            else
+                break;
+        }
         else
             break;
-    }while(nodeTr != NULL);
+    }
 
     if(nodeTr != NULL){
         filtraEsatti(treeStringValid, treeStringInvalid, nodeTr->left, nodeFilt);
@@ -540,9 +587,9 @@ void filtraStringhe(nodeTreeString **treeStringValid, nodeTreeString **treeStrin
     while(listFilter != NULL){
         if(listFilter->attr == NESSUNO)
             filtraNessuno(treeStringValid, treeStringInvalid, *treeStringValid, listFilter->c);
-        else if(listFilter->attr == MAGGIOREUGUALE)
+        else if(listFilter->attr == MAGGIOREUGUALE && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1))
             filtraMaggioreUguale(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
-        else
+        else if(listFilter->attr == ESATTI && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1))
             filtraEsatti(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
         listFilter = listFilter->pn;
     }
@@ -557,32 +604,24 @@ nodeFilter* searchListFiltroSto(nodeFilter *listFiltroSto, char c){
     return NULL;
 }
 
-nodePos* searchNodePos(nodePos *list, int pos) {
-    while(list != NULL){
-        if(list->pos == pos)
-            return list;
-        list = list->pn;
-    }
-    return NULL;
-}
-
-void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFiltroSto) {
-    while(listFiltroRec != NULL){
-        nodeFilter *pFS = searchListFiltroSto(*listFiltroSto, listFiltroRec->c);
+void aggiornamentoFiltroStorico(nodeFilter **listFiltroRec, nodeFilter **listFiltroSto) {
+    nodeFilter *curr = *listFiltroRec;
+    while(curr != NULL) {
+        nodeFilter *pFS = searchListFiltroSto(*listFiltroSto, curr->c);
 
         // SE IL NODO NON ESISTE
-        if(pFS == NULL){
+        if (pFS == NULL) {
             pFS = malloc(sizeof(nodeFilter));
 
-            pFS->c = listFiltroRec->c;
-            pFS->num = listFiltroRec->num;
-            pFS->attr = listFiltroRec->attr;
+            pFS->c = curr->c;
+            pFS->num = curr->num;
+            pFS->attr = curr->attr;
             pFS->pG = NULL;
             pFS->pS = NULL;
 
-            nodePos *nPR = listFiltroRec->pG; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE GIUSTA
+            nodePos *nPR = curr->pG; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE GIUSTA
 
-            while(nPR != NULL){
+            while (nPR != NULL) {
                 nodePos *nPS = malloc(sizeof(nodePos));
 
                 nPS->pos = nPR->pos;
@@ -592,9 +631,9 @@ void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFilt
                 nPR = nPR->pn;
             }
 
-            nPR = listFiltroRec->pS; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE SBAGLIATA
+            nPR = curr->pS; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE SBAGLIATA
 
-            while(nPR != NULL){
+            while (nPR != NULL) {
                 nodePos *nPS = malloc(sizeof(nodePos));
 
                 nPS->pos = nPR->pos;
@@ -606,55 +645,72 @@ void aggiornamentoFiltroStorico(nodeFilter *listFiltroRec, nodeFilter **listFilt
 
             pFS->pn = *listFiltroSto;
             *listFiltroSto = pFS;
-        }
-        else{
-            // SE IL NODO ESISTE E L'ATTRIBUTO È NESSUNO NON FACCIO NIENTE
-            // SE IL NODO ESISTE E L'ATTRIBUTO È MAGGIORE UGUALE O UGUALE DEVO VEDERE SE SONO CAMBIATI I NODI DI POSIZIONE E CONTROLLARE SE CAMBIANO ANCHE IL NUMERO DI LETTERE
-            // SE IL NODO È UGUALE NON MODIFICO IN MAGGIORE UGUALE
+        } else {
+            // SE IL NODO ESISTE E L'ATTRIBUTO È NESSUNO LO TOLGO DA LISTFILTROREC
+            // SE IL NODO ESISTE E L'ATTRIBUTO È MAGGIORE UGUALE O ESATTI DEVO VEDERE SE SONO CAMBIATI I NODI DI POSIZIONE E CONTROLLARE SE CAMBIANO ANCHE IL NUMERO DI LETTERE
+            // SE IL NODO È ESATTI NON MODIFICO IN MAGGIORE UGUALE
 
-            if(listFiltroRec->attr != NESSUNO){
-                if(listFiltroRec->attr > pFS->attr)
-                    pFS->attr = listFiltroRec->attr;
+            bool changedNumAtt = false;
+            if (curr->attr > pFS->attr) {
+                pFS->attr = curr->attr;
+                changedNumAtt = true;
+            }
 
-                nodePos *nPR = listFiltroRec->pG;
-                int cont = 0;
+            if(curr->num > pFS->num){
+                pFS->num = curr->num;
+                changedNumAtt = true;
+            }
 
-                while(nPR != NULL){
-                    cont++;
-                    nodePos *nPS = searchNodePos(pFS->pG, nPR->pos);
+            nodePos *nPCurr = curr->pG;
 
-                    if(nPS == NULL){
-                        nPS = malloc(sizeof(nodePos));
-                        nPS->pos = nPR->pos;
-                        nPS->pn = pFS->pG;
-                        pFS->pG = nPS;
-                    }
-                    nPR = nPR->pn;
-                }
+            while (nPCurr != NULL) {
+                nodePos *nPS = searchNodePos(pFS->pG, nPCurr->pos);
 
-                // DEVO NOTIFICARE L'AGGIORNAMENTO MODIFICANDO LA LISTA RECENTE PER POI APPLICARLA
-                if(cont > listFiltroRec->num)
-                    listFiltroRec->num = cont;
-
-                nPR = listFiltroRec->pS;
-
-                while(nPR != NULL){
-                    nodePos *nPS = searchNodePos(pFS->pS, nPR->pos);
-
-                    if(nPS == NULL){
-                        nPS = malloc(sizeof(nodePos));
-                        nPS->pos = nPR->pos;
-                        nPS->pn = pFS->pS;
-                        pFS->pS = nPS;
-                    }
-
-                    nPR = nPR->pn;
+                if (nPS == NULL) {
+                    nPS = malloc(sizeof(nodePos));
+                    nPS->pos = nPCurr->pos;
+                    nPS->pn = pFS->pG;
+                    pFS->pG = nPS;
+                    nPCurr = nPCurr->pn;
                 }
             }
+
+            nPCurr = pFS->pG;
+            int cont = 0;
+
+            while (nPCurr != NULL) {
+                cont++;
+                nPCurr = nPCurr->pn;
+            }
+
+            // DEVO NOTIFICARE L'AGGIORNAMENTO MODIFICANDO LA LISTA RECENTE PER POI APPLICARLA
+            if (cont > pFS->num) {
+                curr->num = cont;
+                changedNumAtt = true;
+            }
+
+            nPCurr = curr->pS;
+
+            while (nPCurr != NULL) {
+                nodePos *nPS = searchNodePos(pFS->pS, nPCurr->pos);
+
+                if (nPS == NULL) {
+                    nPS = malloc(sizeof(nodePos));
+                    nPS->pos = nPCurr->pos;
+                    nPS->pn = pFS->pS;
+                    pFS->pS = nPS;
+                    nPCurr = nPCurr->pn;
+                }
+            }
+
+            if (changedNumAtt == false)
+                curr->num = -1;
         }
-        listFiltroRec = listFiltroRec->pn;
+
+        curr = curr->pn;
     }
 }
+
 
 bool filtraParola(char *string, nodeFilter *listFiltroSto){
     while(listFiltroSto != NULL){
@@ -730,8 +786,8 @@ void deleteTreeStringValid(nodeTreeString *treeStringValid, nodeTreeString **tre
 void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
     char buffer[lengthBuff];
     nodeTreeString *treeStringInvalid = NULL;
-    nodeFilter *listFiltroRec = NULL;
-    nodeFilter *listFiltroSto = NULL;
+    nodeFilter *listFilterRec = NULL;
+    nodeFilter *listFilterSto = NULL;
     int n;
 
     if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
@@ -751,7 +807,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
         }
 
         if(strcmp(buffer, "+inserisci_inizio\n") == 0){
-            inserisciInizio(treeStringValid, &treeStringInvalid, listFiltroSto, lengthBuff);
+            inserisciInizio(treeStringValid, &treeStringInvalid, listFilterSto, lengthBuff);
             continue;
         }
 
@@ -767,7 +823,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
             for(int i = 0; i < k - 1; i++){
                 if(buffer[i] == pR->string[i]){
                     putchar('+');
-                    letteraGiusta(&listFiltroRec, buffer[i], i);
+                    letteraGiusta(listFilterSto, &listFilterRec, buffer[i], i);
                 }
                 else{
                     bool exist = false;
@@ -783,7 +839,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
 
                     if(exist == false){
                         putchar('/');
-                        letteraInesistente(&listFiltroRec, buffer[i]);
+                        letteraInesistente(listFilterSto, &listFilterRec, buffer[i]);
                     }
                     else{
                         int lettereNonInPosizioneCorretta = 0;
@@ -794,11 +850,11 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
 
                         if(lettereNonInPosizioneCorretta <= lettereLibere){
                             putchar('|');
-                            letteraPosizioneSbagliata(&listFiltroRec, buffer[i], i);
+                            letteraPosizioneSbagliata(listFilterSto, &listFilterRec, buffer[i], i);
                         }
                         else{
                             putchar('/');
-                            letteraConnessioniFinite(&listFiltroRec, buffer[i], i);
+                            letteraConnessioniFinite(listFilterSto, &listFilterRec, buffer[i], i);
                         }
                     }
                 }
@@ -807,11 +863,11 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
             // Applicare il filtro recente a quello storico
             // Vedere se ci sono delle modifiche in quello storico rispetto al recente (numero di lettere)
             // Se ci sono delle modifiche, aggiorno la lista recente e poi la applico
-            aggiornamentoFiltroStorico(listFiltroRec, &listFiltroSto);
+            aggiornamentoFiltroStorico(&listFilterRec, &listFilterSto);
             // Filtrare le stringhe
-            filtraStringhe(treeStringValid, &treeStringInvalid, listFiltroRec);
+            filtraStringhe(treeStringValid, &treeStringInvalid, listFilterRec);
             printf("%d\n", numeroStringheValide(*treeStringValid));
-            freeListaFiltro(&listFiltroRec);
+            freeListaFiltro(&listFilterRec);
         }
         else
             puts("not_exists");
@@ -822,7 +878,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
 
     deleteTreeStringValid(*treeStringValid, &treeStringInvalid);
     *treeStringValid = treeStringInvalid;
-    freeListaFiltro(&listFiltroSto);
+    freeListaFiltro(&listFilterSto);
 }
 
 int main() {
@@ -851,7 +907,6 @@ int main() {
 
     } while (1);
 
-    deleteAllTree(treeStringValid);
-    free(treeStringValid);
+    //deleteAllTree(treeStringValid);
     return 0;
 }
