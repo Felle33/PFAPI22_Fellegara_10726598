@@ -37,6 +37,12 @@ void setLengthBuff(int *lengthBuff){
         *lengthBuff = 19;
 }
 
+int stringCmp(const char* s1, const char* s2){
+    while (*s1 && (*s1 == *s2))
+        s1++, s2++;
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+}
+
 nodeTreeString* createTreeNodeString(nodeTreeString* parent, char *string, color col){
     nodeTreeString* result = malloc(sizeof(nodeTreeString));
     if(result != NULL){
@@ -153,7 +159,7 @@ void insertTree(nodeTreeString** head, char *string){
 
     while(x != NULL){
         y = x;
-        if(strcmp(string, x->string) < 0)
+        if(stringCmp(string, x->string) < 0)
             x = x->left;
         else
             x = x->right;
@@ -163,7 +169,7 @@ void insertTree(nodeTreeString** head, char *string){
 
     if(y == NULL)
         *head = z;
-    else if (strcmp(z->string, y->string) < 0)
+    else if (stringCmp(z->string, y->string) < 0)
         y->left = z;
     else
         y->right = z;
@@ -173,7 +179,7 @@ void insertTree(nodeTreeString** head, char *string){
 
 nodeTreeString* searchBST(nodeTreeString* head, char* string){
     while(head != NULL){
-        int n = strcmp(string, head->string);
+        int n = stringCmp(string, head->string);
         if(n == 0)
             return head;
         else if(n < 0)
@@ -207,7 +213,7 @@ void creazioneParole(nodeTreeString **treeStringValid, int lengthBuff, char *end
 
     while(1){
         if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
-        if(strcmp(buffer, endString) == 0) break;
+        if(stringCmp(buffer, endString) == 0) break;
         buffer[k - 1] = '\0';
         insertTree(treeStringValid, buffer);
     }
@@ -426,7 +432,7 @@ void insertNodeTreeInvalid(nodeTreeString **treeStringInvalid, nodeTreeString *i
 
     while(x != NULL){
         y = x;
-        if(strcmp(ins->string, x->string) < 0)
+        if(stringCmp(ins->string, x->string) < 0)
             x = x->left;
         else
             x = x->right;
@@ -436,7 +442,7 @@ void insertNodeTreeInvalid(nodeTreeString **treeStringInvalid, nodeTreeString *i
 
     if(y == NULL)
         *treeStringInvalid = ins;
-    else if (strcmp(ins->string, y->string) < 0)
+    else if (stringCmp(ins->string, y->string) < 0)
         y->left = ins;
     else
         y->right = ins;
@@ -502,96 +508,58 @@ nodeTreeString *moveNode(nodeTreeString **treeStringValid, nodeTreeString **tree
     return x;
 }
 
-void filtraNessuno(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, char c){
+void filtraStringhe(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *listFilter){
     if(nodeTr == NULL) return;
-    bool delete;
+
+    nodeFilter *headListFilter = listFilter;
+
     while(nodeTr != NULL){
-        delete = false;
-        for(int i = 0; i < k - 1 && delete == false; i++){
-            if(nodeTr->string[i] == c)
-                delete = true;
-        }
-
-        if(delete == true){
-            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
-        }
-        else
-            break;
-    }
-
-    if(nodeTr != NULL){
-        filtraNessuno(treeStringValid, treeStringInvalid, nodeTr->left, c);
-        filtraNessuno(treeStringValid, treeStringInvalid, nodeTr->right, c);
-    }
-}
-
-void filtraMaggioreUguale(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
-    if(nodeTr == NULL) return;
-    int cont, min;
-    while(nodeTr != NULL){
-        if(controlloPosizioni(nodeTr, nodeFilt) == true)
-            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
-        else if(nodeFilt->num != -1){
-            cont = 0;
-            min = nodeFilt->num;
-            for(int i = 0; i < k - 1 && cont < min; i++){
-                if(nodeTr->string[i] == nodeFilt->c)
-                    cont++;
+        int hashMap[78] = {0};
+        for(int i = 0; i < k; i++)
+            hashMap[(int) nodeTr->string[i] - 45]++;
+        while(listFilter != NULL){
+            if(listFilter->attr == NESSUNO){
+                if(hashMap[(int) listFilter->c - 45] != 0){
+                    nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+                    break;
+                }
             }
-
-            if(cont < min)
-                nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
-            else
-                break;
-        }
-        else
-            break;
-    }
-
-    if(nodeTr != NULL){
-        filtraMaggioreUguale(treeStringValid, treeStringInvalid,  nodeTr->left, nodeFilt);
-        filtraMaggioreUguale(treeStringValid, treeStringInvalid,  nodeTr->right, nodeFilt);
-    }
-}
-
-void filtraEsatti(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeTreeString *nodeTr, nodeFilter *nodeFilt){
-    if(nodeTr == NULL) return;
-    int cont, esatti;
-    while(nodeTr != NULL){
-        if(controlloPosizioni(nodeTr, nodeFilt) == true)
-            nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
-        else if(nodeFilt->num != -1){
-            cont = 0;
-            esatti = nodeFilt->num;
-            for(int i = 0; i < k - 1; i++){
-                if(nodeTr->string[i] == nodeFilt->c)
-                    cont++;
+            else if(listFilter->attr == MAGGIOREUGUALE && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1)){
+                if(controlloPosizioni(nodeTr, listFilter) == true){
+                    nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+                    break;
+                }
+                else if(listFilter->num != -1){
+                    int min = listFilter->num;
+                    if(hashMap[(int) listFilter->c - 45] < min){
+                        nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+                        break;
+                    }
+                }
             }
-
-            if(cont != esatti)
-                nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
-            else
-                break;
+            else if(listFilter->attr == ESATTI && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1)){
+                if(controlloPosizioni(nodeTr, listFilter) == true){
+                    nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+                    break;
+                }
+                else if(listFilter->num != -1){
+                    int esatti = listFilter->num;
+                    if(hashMap[(int) listFilter->c - 45] != esatti){
+                        nodeTr = moveNode(treeStringValid, treeStringInvalid, nodeTr);
+                        break;
+                    }
+                }
+            }
+            listFilter = listFilter->pn;
         }
-        else
+        if(listFilter == NULL)
             break;
+        listFilter = headListFilter;
     }
 
     if(nodeTr != NULL){
-        filtraEsatti(treeStringValid, treeStringInvalid, nodeTr->left, nodeFilt);
-        filtraEsatti(treeStringValid, treeStringInvalid, nodeTr->right, nodeFilt);
-    }
-}
-
-void filtraStringhe(nodeTreeString **treeStringValid, nodeTreeString **treeStringInvalid, nodeFilter *listFilter) {
-    while(listFilter != NULL){
-        if(listFilter->attr == NESSUNO)
-            filtraNessuno(treeStringValid, treeStringInvalid, *treeStringValid, listFilter->c);
-        else if(listFilter->attr == MAGGIOREUGUALE && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1))
-            filtraMaggioreUguale(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
-        else if(listFilter->attr == ESATTI && (listFilter->pG != NULL || listFilter->pS != NULL || listFilter->num != -1))
-            filtraEsatti(treeStringValid, treeStringInvalid, *treeStringValid, listFilter);
-        listFilter = listFilter->pn;
+        filtraStringhe(treeStringValid, treeStringInvalid, nodeTr->left, headListFilter);
+        filtraStringhe(treeStringValid, treeStringInvalid, nodeTr->right, headListFilter);
     }
 }
 
@@ -711,7 +679,6 @@ void aggiornamentoFiltroStorico(nodeFilter **listFiltroRec, nodeFilter **listFil
     }
 }
 
-
 bool filtraParola(char *string, nodeFilter *listFiltroSto){
     while(listFiltroSto != NULL){
         if(listFiltroSto->attr == NESSUNO){
@@ -762,7 +729,7 @@ void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStri
 
     while(1){
         if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
-        if(strcmp(buffer, "+inserisci_fine\n") == 0) break;
+        if(stringCmp(buffer, "+inserisci_fine\n") == 0) break;
         buffer[k - 1] = '\0';
         if(filtraParola(buffer, listFiltroSto) == true)
             insertTree(treeStringValid, buffer);
@@ -801,19 +768,19 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
     while(n > 0){
         if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
 
-        if(strcmp(buffer, "+stampa_filtrate\n") == 0){
+        if(stringCmp(buffer, "+stampa_filtrate\n") == 0){
             inOrderTraverseTreeValid(*treeStringValid);
             continue;
         }
 
-        if(strcmp(buffer, "+inserisci_inizio\n") == 0){
+        if(stringCmp(buffer, "+inserisci_inizio\n") == 0){
             inserisciInizio(treeStringValid, &treeStringInvalid, listFilterSto, lengthBuff);
             continue;
         }
 
         buffer[k - 1] = '\0';
 
-        if(strcmp(buffer, pR->string) == 0){
+        if(stringCmp(buffer, pR->string) == 0){
             puts("ok");
             break;
         }
@@ -865,7 +832,7 @@ void nuovaPartita(nodeTreeString **treeStringValid, int lengthBuff){
             // Se ci sono delle modifiche, aggiorno la lista recente e poi la applico
             aggiornamentoFiltroStorico(&listFilterRec, &listFilterSto);
             // Filtrare le stringhe
-            filtraStringhe(treeStringValid, &treeStringInvalid, listFilterRec);
+            filtraStringhe(treeStringValid, &treeStringInvalid, *treeStringValid, listFilterRec);
             printf("%d\n", numeroStringheValide(*treeStringValid));
             freeListaFiltro(&listFilterRec);
         }
@@ -900,9 +867,9 @@ int main() {
     do{
         if(fgets(buffer, lengthBuff, stdin) == NULL) break;
 
-        if(strcmp(buffer, "+inserisci_inizio\n") == 0)
+        if(stringCmp(buffer, "+inserisci_inizio\n") == 0)
             creazioneParole(&treeStringValid, lengthBuff, "+inserisci_fine\n");
-        else if(strcmp(buffer, "+nuova_partita\n") == 0)
+        else if(stringCmp(buffer, "+nuova_partita\n") == 0)
             nuovaPartita(&treeStringValid, lengthBuff);
 
     } while (1);
