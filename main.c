@@ -8,6 +8,7 @@ typedef enum {RED, BLACK} color;
 
 int k;
 int numeroParoleFiltrate = 0;
+const int numberInput = 1000;
 
 typedef struct treeString{
     char *string;
@@ -36,12 +37,6 @@ typedef struct nodeCamb{
     struct nodeCamb* next;
 }nodeCamb;
 
-typedef struct nodeLetter{
-    char c;
-    int num;
-    struct nodeLetter* next;
-}nodeLetter;
-
 int stringCmp(const char* s1, const char* s2);
 void stringCpy(char* dest, const char* source);
 nodeTreeString* searchBST(nodeTreeString* tree, nodeTreeString* NIL, char* string);
@@ -66,7 +61,7 @@ bool filtraParola(const char *string, nodeFilter *listFilter);
 void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFilterSto);
 void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStringAll, nodeTreeString *NIL, nodeFilter *listFilterSto, int lengthBuff);
 bool controlloPosizioni(const char *string, nodeFilter *nodeFil);
-void filtraStringheFromAll(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar);
+void filtraStringhe(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar);
 void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff);
 void insertListCamb(nodeCamb **listCamb, nodeTreeString *treeString);
 void modifyValidTree(nodeTreeString **treeStringAll, nodeTreeString **treeStringValid, nodeTreeString *NIL, nodeCamb **listCamb, bool allToValid);
@@ -237,13 +232,42 @@ void insertTreeNode(nodeTreeString** root, nodeTreeString *NIL, nodeTreeString *
 }
 
 void creazioneParole(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff, const char *endString){
-    char buffer[lengthBuff];
+    int cont = 0;
+    char buffer[numberInput][lengthBuff];
 
     while(1){
-        if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
-        if(stringCmp(buffer, endString) == 0) break;
-        buffer[k - 1] = '\0';
-        insertTreeNode(treeStringAll, NIL, createTreeNodeString(NIL, buffer));
+        if(fgets(buffer[cont], lengthBuff, stdin) == NULL) exit(-2);
+        if(stringCmp(buffer[cont], endString) == 0) break;
+        buffer[cont][k - 1] = '\0';
+        cont++;
+        if(cont == numberInput){
+            nodeTreeString *ins = malloc(sizeof(nodeTreeString) * cont);
+            for(int i = 0; i < cont; i++){
+                ins[i].string = malloc(sizeof(char) * k);
+                stringCpy(ins[i].string, buffer[i]);
+                ins[i].parent = NIL;
+                ins[i].left = NIL;
+                ins[i].right = NIL;
+                ins[i].col = RED;
+
+                insertTreeNode(treeStringAll, NIL, &ins[i]);
+            }
+            cont = 0;
+        }
+    }
+
+    if(cont != 0){
+        nodeTreeString *ins = malloc(sizeof(nodeTreeString) * cont);
+        for(int i = 0; i < cont; i++){
+            ins[i].string = malloc(sizeof(char) * k);
+            stringCpy(ins[i].string, buffer[i]);
+            ins[i].parent = NIL;
+            ins[i].left = NIL;
+            ins[i].right = NIL;
+            ins[i].col = RED;
+
+            insertTreeNode(treeStringAll, NIL, &ins[i]);
+        }
     }
 }
 
@@ -530,33 +554,6 @@ void deleteListFilter(nodeFilter **listFilter) {
     *listFilter = NULL;
 }
 
-nodeLetter *searchNodeLetter(nodeLetter *list, char c){
-    while(list != NULL){
-        if(list->c == c)
-            return list;
-        list = list->next;
-    }
-    return NULL;
-}
-
-void deleteListLetter(nodeLetter **list){
-    nodeLetter *curr = *list, *next = NULL;
-    while(curr != NULL){
-        next = curr->next;
-        free(curr);
-        curr = next;
-    }
-    *list = NULL;
-}
-
-void createNodeLetter(nodeLetter **list, char c){
-    nodeLetter *ins = malloc(sizeof(nodeLetter));
-    ins->c = c;
-    ins->num = 1;
-    ins->next = *list;
-    *list = ins;
-}
-
 bool filtraParola(const char *string, nodeFilter *listFilter){
     int hashMap[78] = {0};
 
@@ -739,13 +736,13 @@ void insertListCamb(nodeCamb **listCamb, nodeTreeString *treeString){
     *listCamb = ins;
 }
 
-void filtraStringheFromAll(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar){
+void filtraStringhe(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar){
     if(treeString == NIL) return;
     if(filtraParola(treeString->string, listFilter) == filPar)
         insertListCamb(listCamb, treeString);
 
-    filtraStringheFromAll(treeString->left, NIL, listFilter, listCamb, filPar);
-    filtraStringheFromAll(treeString->right, NIL, listFilter, listCamb, filPar);
+    filtraStringhe(treeString->left, NIL, listFilter, listCamb, filPar);
+    filtraStringhe(treeString->right, NIL, listFilter, listCamb, filPar);
 }
 
 void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff){
@@ -833,11 +830,11 @@ void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengt
             aggiornamentoFiltroStorico(&listFilterRec, &listFilterSto);
             // Filtrare le stringhe
             if(treeStringValid == NIL){
-                filtraStringheFromAll(*treeStringAll, NIL, listFilterRec, &listCamb, true);
+                filtraStringhe(*treeStringAll, NIL, listFilterRec, &listCamb, true);
                 modifyValidTree(treeStringAll, &treeStringValid, NIL, &listCamb, true);
             }
             else{
-                filtraStringheFromAll(treeStringValid, NIL, listFilterRec, &listCamb, false);
+                filtraStringhe(treeStringValid, NIL, listFilterRec, &listCamb, false);
                 modifyValidTree(treeStringAll, &treeStringValid, NIL, &listCamb, false);
             }
 
