@@ -8,7 +8,6 @@ typedef enum {RED, BLACK} color;
 
 int k;
 int numeroParoleFiltrate = 0;
-const int numberInput = 1000;
 
 typedef struct treeString{
     char *string;
@@ -51,7 +50,7 @@ void insertTreeNode(nodeTreeString ** root, nodeTreeString *NIL, nodeTreeString 
 void RBDeleteFixup(nodeTreeString **root, nodeTreeString *x, nodeTreeString *NIL);
 nodeTreeString *moveNode(nodeTreeString **source, nodeTreeString **dest, nodeTreeString *NIL, nodeTreeString *z);
 void deleteTree(nodeTreeString *treeStringValid,  nodeTreeString *NIL, nodeCamb **listCamb);
-void creazioneParole(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff, const char *endString);
+void creazioneParole(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff, char *endString);
 nodeFilter* searchListFilter(nodeFilter *list, char c);
 void deleteListFilter(nodeFilter **listFilter);
 nodePos* searchNodePos(nodePos *listNodePos, int pos);
@@ -198,14 +197,13 @@ void RBInsertFixup(nodeTreeString **root, nodeTreeString *z, nodeTreeString *NIL
 
 nodeTreeString* createTreeNodeString(nodeTreeString *NIL, char *string){
     nodeTreeString* result = malloc(sizeof(nodeTreeString));
-    if(result != NULL){
-        result->string = malloc(sizeof(char) * k);
-        stringCpy(result->string, string);
-        result->left = NIL;
-        result->right = NIL;
-        result->parent = NIL;
-        result->col = RED;
-    }
+
+    result->string = malloc(sizeof(char) * k);
+    stringCpy(result->string, string);
+    result->left = NIL;
+    result->right = NIL;
+    result->parent = NIL;
+    result->col = RED;
     return result;
 }
 
@@ -231,42 +229,28 @@ void insertTreeNode(nodeTreeString** root, nodeTreeString *NIL, nodeTreeString *
     RBInsertFixup(root, ins, NIL);
 }
 
-void creazioneParole(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff, const char *endString){
-    int cont = 0;
-    char buffer[numberInput][lengthBuff];
+void creazioneParole(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff, char *endString){
+    char buffer[lengthBuff];
 
-    while(1){
-        if(fgets(buffer[cont], lengthBuff, stdin) == NULL) exit(-2);
-        if(stringCmp(buffer[cont], endString) == 0) break;
-        buffer[cont][k - 1] = '\0';
-        cont++;
-        if(cont == numberInput){
-            nodeTreeString *ins = malloc(sizeof(nodeTreeString) * cont);
-            for(int i = 0; i < cont; i++){
-                ins[i].string = malloc(sizeof(char) * k);
-                stringCpy(ins[i].string, buffer[i]);
-                ins[i].parent = NIL;
-                ins[i].left = NIL;
-                ins[i].right = NIL;
-                ins[i].col = RED;
+    if(stringCmp(endString, "+nuova_partita\n") == 0){
+        while(1){
+            if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
+            if(stringCmp(buffer, "+inserisci_inizio\n") == 0)
+                continue;
+            if(stringCmp(buffer, "+inserisci_fine\n") == 0)
+                continue;
 
-                insertTreeNode(treeStringAll, NIL, &ins[i]);
-            }
-            cont = 0;
+            if(stringCmp(buffer, endString) == 0) break;
+            buffer[k - 1] = '\0';
+            insertTreeNode(treeStringAll, NIL, createTreeNodeString(NIL, buffer));
         }
     }
-
-    if(cont != 0){
-        nodeTreeString *ins = malloc(sizeof(nodeTreeString) * cont);
-        for(int i = 0; i < cont; i++){
-            ins[i].string = malloc(sizeof(char) * k);
-            stringCpy(ins[i].string, buffer[i]);
-            ins[i].parent = NIL;
-            ins[i].left = NIL;
-            ins[i].right = NIL;
-            ins[i].col = RED;
-
-            insertTreeNode(treeStringAll, NIL, &ins[i]);
+    else{
+        while(1){
+            if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-2);
+            if(stringCmp(buffer, endString) == 0) break;
+            buffer[k - 1] = '\0';
+            insertTreeNode(treeStringAll, NIL, createTreeNodeString(NIL, buffer));
         }
     }
 }
@@ -435,7 +419,6 @@ void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFil
             pFS->pS = NULL;
 
             nodePos *nPR = curr->pG; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE GIUSTA
-
             while (nPR != NULL) {
                 nodePos *nPS = malloc(sizeof(nodePos));
 
@@ -447,7 +430,6 @@ void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFil
             }
 
             nPR = curr->pS; // TESTA DELLA LISTA RECENTE DEI NODI IN POSIZIONE SBAGLIATA
-
             while (nPR != NULL) {
                 nodePos *nPS = malloc(sizeof(nodePos));
 
@@ -461,7 +443,6 @@ void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFil
             pFS->next = *listFilterSto;
             *listFilterSto = pFS;
         } else {
-            // SE IL NODO ESISTE E L'ATTRIBUTO È NESSUNO LO TOLGO DA LISTFILTROREC
             // SE IL NODO ESISTE E L'ATTRIBUTO È MAGGIORE UGUALE O ESATTI DEVO VEDERE SE SONO CAMBIATI I NODI DI POSIZIONE E CONTROLLARE SE CAMBIANO ANCHE IL NUMERO DI LETTERE
             // SE IL NODO È ESATTI NON MODIFICO IN MAGGIORE UGUALE
 
@@ -548,10 +529,28 @@ void deleteListFilter(nodeFilter **listFilter) {
             free(curP);
             curP = sucP;
         }
-
         free(curF);
     }
     *listFilter = NULL;
+}
+
+bool controlloPosizioni(const char *string, nodeFilter *nodeFil){
+    nodePos *pPos = nodeFil->pG;
+    while(pPos != NULL){
+        if(string[pPos->pos] != nodeFil->c)
+            return false;
+
+        pPos = pPos->next;
+    }
+
+    pPos = nodeFil->pS;
+    while(pPos != NULL) {
+        if (string[pPos->pos] == nodeFil->c)
+            return false;
+
+        pPos = pPos->next;
+    }
+    return true;
 }
 
 bool filtraParola(const char *string, nodeFilter *listFilter){
@@ -597,7 +596,6 @@ void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStri
         }
         else
             insertTreeNode(treeStringAll, NIL, createTreeNodeString(NIL, buffer));
-
     }
 }
 
@@ -710,25 +708,6 @@ nodeTreeString *moveNode(nodeTreeString **source, nodeTreeString **dest, nodeTre
     return y != z ? y : x;
 }
 
-bool controlloPosizioni(const char *string, nodeFilter *nodeFil){
-    nodePos *pPos = nodeFil->pG;
-    while(pPos != NULL){
-        if(string[pPos->pos] != nodeFil->c)
-            return false;
-
-        pPos = pPos->next;
-    }
-
-    pPos = nodeFil->pS;
-    while(pPos != NULL) {
-        if (string[pPos->pos] == nodeFil->c)
-            return false;
-
-        pPos = pPos->next;
-    }
-    return true;
-}
-
 void insertListCamb(nodeCamb **listCamb, nodeTreeString *treeString){
     nodeCamb *ins = malloc(sizeof(nodeCamb));
     ins->nodeTreeStringCamb = treeString;
@@ -745,8 +724,28 @@ void filtraStringhe(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter 
     filtraStringhe(treeString->right, NIL, listFilter, listCamb, filPar);
 }
 
+void modifyValidTree(nodeTreeString **treeStringAll, nodeTreeString **treeStringValid, nodeTreeString *NIL, nodeCamb **listCamb, bool allToValid) {
+    nodeCamb *curr = *listCamb, *next = NULL;
+
+    while(curr != NULL){
+        next = curr->next;
+        if(allToValid == true){
+            moveNode(treeStringAll, treeStringValid, NIL, curr->nodeTreeStringCamb);
+            numeroParoleFiltrate++;
+        }
+        else{
+            moveNode(treeStringValid, treeStringAll, NIL, curr->nodeTreeStringCamb);
+            numeroParoleFiltrate--;
+        }
+        free(curr);
+        curr = next;
+    }
+    *listCamb = NULL;
+}
+
 void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff){
     char buffer[lengthBuff];
+    char parolaRiferimento[k];
     nodeTreeString *treeStringValid = NIL;
     nodeCamb *listCamb = NULL;
     nodeFilter *listFilterRec = NULL;
@@ -755,8 +754,7 @@ void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengt
 
     if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
     buffer[k - 1] = '\0';
-
-    nodeTreeString *pR = searchBST(*treeStringAll, NIL, buffer);
+    stringCpy(parolaRiferimento, buffer);
 
     if(fgets(buffer, lengthBuff, stdin) == NULL) exit(-3);
     n = (int) strtol(buffer, NULL, 10);
@@ -776,51 +774,41 @@ void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengt
             inserisciInizio(&treeStringValid, treeStringAll, NIL, listFilterSto, lengthBuff);
             continue;
         }
+
         buffer[k - 1] = '\0';
-        if(stringCmp(buffer, pR->string) == 0){
+        if(stringCmp(buffer, parolaRiferimento) == 0){
             puts("ok");
             break;
         }
 
         if(searchBST(*treeStringAll, NIL, buffer) != NIL || searchBST(treeStringValid, NIL, buffer) != NIL){
             n--;
+            unsigned short int hashMap[78] = {0};
+            bool existenceMap[78] = {false};
+
+            for(int t = 0; t < k - 1; t++){
+                existenceMap[(int) parolaRiferimento[t] - 45] = true;
+                if(buffer[t] != parolaRiferimento[t])
+                    hashMap[(int) parolaRiferimento[t] - 45]++;
+            }
+
             for(int i = 0; i < k - 1; i++){
-                if(buffer[i] == pR->string[i]){
+                if(buffer[i] == parolaRiferimento[i]){
                     putchar('+');
                     filtroLettera(listFilterSto, &listFilterRec, buffer[i], i, 2);
                 }
+                else if(existenceMap[(int) buffer[i] - 45] == false){
+                    putchar('/');
+                    filtroLettera(listFilterSto, &listFilterRec, buffer[i], 0, 1);
+                }
+                else if(hashMap[(int) buffer[i] - 45] == 0){
+                    putchar('/');
+                    filtroLettera(listFilterSto, &listFilterRec, buffer[i], i, 4);
+                }
                 else{
-                    bool exist = false;
-                    int lettereLibere = 0;
-
-                    for(int j = 0; j < k - 1; j++){
-                        if(buffer[i] == pR->string[j]){
-                            exist = true;
-                            if(pR->string[j] != buffer[j])
-                                lettereLibere++;
-                        }
-                    }
-
-                    if(exist == false){
-                        putchar('/');
-                        filtroLettera(listFilterSto, &listFilterRec, buffer[i], 0, 1);
-                    }
-                    else{
-                        int lettereNonInPosizioneCorretta = 0;
-                        for(int j = 0; j <= i; j++){
-                            if(buffer[i] == buffer[j] && buffer[j] != pR->string[j])
-                                lettereNonInPosizioneCorretta++;
-                        }
-
-                        if(lettereNonInPosizioneCorretta <= lettereLibere){
-                            putchar('|');
-                            filtroLettera(listFilterSto, &listFilterRec, buffer[i], i, 3);
-                        }
-                        else{
-                            putchar('/');
-                            filtroLettera(listFilterSto, &listFilterRec, buffer[i], i, 4);
-                        }
-                    }
+                    hashMap[(int) buffer[i] - 45]--;
+                    putchar('|');
+                    filtroLettera(listFilterSto, &listFilterRec, buffer[i], i, 3);
                 }
             }
             putchar('\n');
@@ -859,25 +847,6 @@ void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengt
     }
 
     deleteListFilter(&listFilterSto);
-}
-
-void modifyValidTree(nodeTreeString **treeStringAll, nodeTreeString **treeStringValid, nodeTreeString *NIL, nodeCamb **listCamb, bool allToValid) {
-    nodeCamb *curr = *listCamb, *next = NULL;
-
-    while(curr != NULL){
-        next = curr->next;
-        if(allToValid == true){
-            moveNode(treeStringAll, treeStringValid, NIL, curr->nodeTreeStringCamb);
-            numeroParoleFiltrate++;
-        }
-        else{
-            moveNode(treeStringValid, treeStringAll, NIL, curr->nodeTreeStringCamb);
-            numeroParoleFiltrate--;
-        }
-        free(curr);
-        curr = next;
-    }
-    *listCamb = NULL;
 }
 
 int main() {
