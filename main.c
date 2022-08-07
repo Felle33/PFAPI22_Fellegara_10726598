@@ -60,7 +60,7 @@ bool filtraParola(const char *string, nodeFilter *listFilter);
 void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFilterSto);
 void inserisciInizio(nodeTreeString **treeStringValid, nodeTreeString **treeStringAll, nodeTreeString *NIL, nodeFilter *listFilterSto, int lengthBuff);
 bool controlloPosizioni(const char *string, nodeFilter *nodeFil);
-void filtraStringhe(nodeTreeString *treeString, nodeTreeString *NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar);
+void filtraStringhe(nodeTreeString* root, nodeTreeString* NIL, nodeFilter *listFilter, nodeCamb **listCamb, bool filPar);
 void nuovaPartita(nodeTreeString **treeStringAll, nodeTreeString *NIL, int lengthBuff);
 void insertListCamb(nodeCamb **listCamb, nodeTreeString *treeString);
 void modifyValidTree(nodeTreeString **treeStringAll, nodeTreeString **treeStringValid, nodeTreeString *NIL, nodeCamb **listCamb, bool allToValid);
@@ -507,10 +507,33 @@ void aggiornamentoFiltroStorico(nodeFilter **listFilterRec, nodeFilter **listFil
 }
 
 void deleteTree(nodeTreeString *treeStringValid,  nodeTreeString *NIL, nodeCamb **listCamb) {
-    if(treeStringValid == NIL) return;
-    insertListCamb(listCamb, treeStringValid);
-    deleteTree(treeStringValid->left, NIL, listCamb);
-    deleteTree(treeStringValid->right, NIL, listCamb);
+    nodeTreeString *current, *pre;
+    if (treeStringValid == NIL)
+        return;
+
+    current = treeStringValid;
+    while(current != NIL){
+
+        if (current->left == NIL) {
+            insertListCamb(listCamb, current);
+            current = current->right;
+        }
+        else{
+            pre = current->left;
+            while(pre->right != NIL && pre->right != current)
+                pre = pre->right;
+
+            if(pre->right == NIL){
+                pre->right = current;
+                current = current->left;
+            }
+            else{
+                pre->right = NIL;
+                insertListCamb(listCamb, current);
+                current = current->right;
+            }
+        }
+    }
 }
 
 void deleteListFilter(nodeFilter **listFilter) {
@@ -553,36 +576,76 @@ bool controlloPosizioni(const char *string, nodeFilter *nodeFil){
     return true;
 }
 
+bool searchHashMap(short int hashMap[][2], char c, int* pos){
+    int i = 0;
+    int j = (c + i) % k;
+
+    while(hashMap[j][0] != 0){
+        if(hashMap[j][0] == c){
+            *pos = j;
+            return true;
+        }
+
+        i++;
+        j = (c + i) % k;
+    }
+    return false;
+}
+
+int insertHashMap(short int hashMap[][2], char c){
+    int i = 0;
+    int j = (c + i) % k;
+    while(hashMap[j][0] != 0){
+        if(hashMap[j][0] == c)
+            return j;
+        i++;
+        j = (c + i) % k;
+    }
+
+    hashMap[j][0] = (unsigned char) c;
+    hashMap[j][1] = 0;
+    return j;
+}
+
 bool filtraParola(const char *string, nodeFilter *listFilter){
+    short int hashMap[k][2];
+
+    for(int l = 0; l < k; l++)
+        hashMap[l][0] = 0;
+
+    for(int l = 0; l < k - 1; l++){
+        int pos = insertHashMap(hashMap, string[l]);
+        hashMap[pos][1]++;
+    }
+
+    int pos;
     while(listFilter != NULL){
         if(listFilter->attr == NESSUNO){
-            for(int i = 0; i < k - 1; i++)
-                if(string[i] == listFilter->c)
-                    return false;
+            if(searchHashMap(hashMap, listFilter->c, &pos) == true)
+                return false;
         }
         else{
             if(controlloPosizioni(string, listFilter) == false)
                 return false;
 
-            if(listFilter->num != -1 ){
+            if(listFilter->num != -1){
                 if(listFilter->attr == ESATTI){
-                    int num = 0;
-                    for(int i = 0; i < k - 1; i++)
-                        if(string[i] == listFilter->c)
-                            num++;
-                    if(num != listFilter->num)
+                    if(searchHashMap(hashMap, listFilter->c, &pos) == true){
+                        if(hashMap[pos][1] != listFilter->num)
+                            return false;
+                    }
+                    else
                         return false;
                 }
                 else{
-                    int num = 0;
-                    for(int i = 0; i < k - 1 && num < listFilter->num; i++)
-                        if(string[i] == listFilter->c)
-                            num++;
-                    if(num < listFilter->num)
+                    if(searchHashMap(hashMap, listFilter->c, &pos) == true){
+                        if(hashMap[pos][1] < listFilter->num)
+                            return false;
+                    }
+                    else
                         return false;
                 }
             }
-
         }
         listFilter = listFilter->next;
     }
@@ -885,6 +948,5 @@ int main() {
             nuovaPartita(&treeStringValid, NIL, lengthBuff);
         }
     } while (1);
-
     return 0;
 }
