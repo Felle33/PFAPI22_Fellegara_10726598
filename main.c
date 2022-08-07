@@ -554,28 +554,34 @@ bool controlloPosizioni(const char *string, nodeFilter *nodeFil){
 }
 
 bool filtraParola(const char *string, nodeFilter *listFilter){
-    int hashMap[78] = {0};
-
-    for(int i = 0; i < k - 1; i++)
-        hashMap[(int) string[i] - 45]++;
-
     while(listFilter != NULL){
         if(listFilter->attr == NESSUNO){
-            if(hashMap[(int) listFilter->c - 45] != 0)
-                return false;
+            for(int i = 0; i < k - 1; i++)
+                if(string[i] == listFilter->c)
+                    return false;
         }
         else{
-            if(listFilter->attr == ESATTI){
-                if(hashMap[(int) listFilter->c - 45] != listFilter->num && listFilter->num != -1)
-                    return false;
-            }
-            else{
-                if(hashMap[(int) listFilter->c - 45] < listFilter->num)
-                    return false;
-            }
-
             if(controlloPosizioni(string, listFilter) == false)
                 return false;
+
+            if(listFilter->num != -1 ){
+                if(listFilter->attr == ESATTI){
+                    int num = 0;
+                    for(int i = 0; i < k - 1; i++)
+                        if(string[i] == listFilter->c)
+                            num++;
+                    if(num != listFilter->num)
+                        return false;
+                }
+                else{
+                    int num = 0;
+                    for(int i = 0; i < k - 1 && num < listFilter->num; i++)
+                        if(string[i] == listFilter->c)
+                            num++;
+                    if(num < listFilter->num)
+                        return false;
+                }
+            }
 
         }
         listFilter = listFilter->next;
